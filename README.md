@@ -7,9 +7,9 @@ promotional decisions inside clearly defined autonomy boundaries.
 ## Status
 
 Work in progress, built incrementally. What exists so far: the database schema,
-the reservation lifecycle, dynamic pricing, the booking API, and the first
-agent skill (finding alternatives after a failed booking). Still to come: the
-remaining agent skills and the dashboard.
+the reservation lifecycle, dynamic pricing, the booking API, two agent skills,
+and the Reservation Operations Agent that routes between them. Still to come:
+a third skill and the dashboard.
 
 ## Requirements
 
@@ -57,6 +57,10 @@ pytest
   repositories/services, then makes a single structured-output LLM call to
   reason over it. Suggestion only, no skill books, cancels, or otherwise
   mutates anything itself, the caller decides whether to act on it.
+- `app/reservation_agent.py`: the Reservation Operations Agent. Takes a
+  plain-language description of a staff situation, binds both skills to an
+  LLM as tools, and lets the LLM decide which one applies. The agent only
+  ever decides *which* skill to run, it never mutates anything itself either.
 - `app/main.py`: the FastAPI app, including a background task that sweeps for
   expired holds on a fixed interval, so a reservation's stored status stays
   accurate without depending on something else happening to read or contend
@@ -69,8 +73,12 @@ pytest
 - `POST /reservations`, `GET /reservations/{id}`,
   `POST /reservations/{id}/confirm`, `POST /reservations/{id}/cancel`: booking
   lifecycle.
-- `POST /agent/find-alternatives`: agent skill 1, suggests an alternative
-  table or time after a failed booking attempt.
+- `POST /agent/find-alternatives`: skill 1, suggests an alternative table or
+  time after a failed booking attempt.
+- `POST /agent/evaluate-min-party-override`: skill 2, evaluates whether to
+  seat a party below a table's minimum size, given current demand.
+- `POST /agent/handle`: the Reservation Operations Agent entry point, describe
+  a situation in plain language, it decides which skill (if any) applies.
 
 ### Concurrency model, in short
 

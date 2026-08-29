@@ -13,7 +13,11 @@ DB_PATH = Path(__file__).parent.parent / "reservation.db"
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS restaurant (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL
+    name TEXT NOT NULL,
+    opening_hour INTEGER NOT NULL DEFAULT 17,
+    closing_hour INTEGER NOT NULL DEFAULT 23,
+    peak_start_hour INTEGER NOT NULL DEFAULT 19,
+    peak_end_hour INTEGER NOT NULL DEFAULT 21
 );
 
 CREATE TABLE IF NOT EXISTS user (

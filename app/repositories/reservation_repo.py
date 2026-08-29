@@ -94,6 +94,26 @@ def count_tables_claimed_at_slots(
     return count
 
 
+def count_reservations_for_table_on_date(
+    conn: sqlite3.Connection, *, table_id: int, date: str, statuses: tuple[str, ...] = ("CONFIRMED", "HELD")
+) -> int:
+    """How many distinct reservations this table already has on this
+    date, across the given statuses. A low count is the "this table
+    has been sitting idle" signal for skill 2.
+    """
+    placeholders = ",".join("?" for _ in statuses)
+    (count,) = conn.execute(
+        f"""
+        SELECT COUNT(DISTINCT r.id)
+        FROM slot_claim sc
+        JOIN reservation r ON r.id = sc.reservation_id
+        WHERE sc.table_id = ? AND sc.date = ? AND r.status IN ({placeholders})
+        """,
+        (table_id, date, *statuses),
+    ).fetchone()
+    return count
+
+
 def find_reclaimable_blocker(conn: sqlite3.Connection, table_id: int, date: str, slot_index: int) -> int | None:
     """If (table_id, date, slot_index) is currently blocked by a HELD
     reservation that's already past its own expiry, return that
