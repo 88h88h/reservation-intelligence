@@ -65,3 +65,54 @@ def delete_slot_claims(conn: sqlite3.Connection, reservation_id: int) -> None:
 
 def update_status(conn: sqlite3.Connection, reservation_id: int, status: str) -> None:
     conn.execute("UPDATE reservation SET status = ? WHERE id = ?", (status, reservation_id))
+
+
+def count_tables_claimed_at_slots(
+    conn: sqlite3.Connection, *, restaurant_id: int, date: str, slot_indices: list[int], status: str
+) -> int:
+    """How many distinct tables at this restaurant have a claim, in the
+    given status, covering any of the given slots on this date. Used to
+    derive occupancy/demand ratios for pricing, scoped to the specific
+    slots being priced, not the restaurant's activity in general.
+    """
+    if not slot_indices:
+        return 0
+    placeholders = ",".join("?" for _ in slot_indices)
+    (count,) = conn.execute(
+        f"""
+        SELECT COUNT(DISTINCT sc.table_id)
+        FROM slot_claim sc
+        JOIN reservation r ON r.id = sc.reservation_id
+        JOIN dining_table t ON t.id = sc.table_id
+        WHERE t.restaurant_id = ?
+          AND sc.date = ?
+          AND sc.slot_index IN ({placeholders})
+          AND r.status = ?
+        """,
+        (restaurant_id, date, *slot_indices, status),
+    ).fetchone()
+    return count
+
+
+def find_reclaimable_blocker(conn: sqlite3.Connection, table_id: int, date: str, slot_index: int) -> int | None:
+    """If (table_id, date, slot_index) is currently blocked by a HELD
+    reservation that's already past its own expiry, return that
+    reservation's id so the caller can release it and retry. Returns
+    None if the slot isn't blocked by anything reclaimable, either it's
+    genuinely taken by an active hold/confirmation, or not blocked at
+    all (the caller only calls this after a real conflict, so the
+    latter shouldn't happen in practice).
+    """
+    row = conn.execute(
+        """
+        SELECT r.id
+        FROM slot_claim sc
+        JOIN reservation r ON r.id = sc.reservation_id
+        WHERE sc.table_id = ? AND sc.date = ? AND sc.slot_index = ?
+          AND r.status = 'HELD'
+          AND r.expiry_time IS NOT NULL
+          AND r.expiry_time < datetime('now')
+        """,
+        (table_id, date, slot_index),
+    ).fetchone()
+    return row["id"] if row else None

@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS dining_table (
     capacity INTEGER NOT NULL,
     is_bookable INTEGER NOT NULL DEFAULT 1,
     type TEXT,
-    min_party_size INTEGER NOT NULL DEFAULT 1
+    min_party_size INTEGER NOT NULL DEFAULT 1,
+    base_price NUMERIC NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS reservation (
@@ -137,16 +138,16 @@ def seed_if_empty() -> None:
             conn.executemany("INSERT INTO user (name, contact) VALUES (?, ?)", users)
 
             tables = [
-                (restaurant_id, "Table 1", 2, "window", 1),
-                (restaurant_id, "Table 2", 4, "standard", 2),
-                (restaurant_id, "Table 3", 4, "standard", 2),
-                (restaurant_id, "Table 4", 6, "patio", 4),
-                (restaurant_id, "Table 5", 2, "chef's counter", 1),
+                (restaurant_id, "Table 1", 2, "window", 1, 40.00),
+                (restaurant_id, "Table 2", 4, "standard", 2, 60.00),
+                (restaurant_id, "Table 3", 4, "standard", 2, 60.00),
+                (restaurant_id, "Table 4", 6, "patio", 4, 90.00),
+                (restaurant_id, "Table 5", 2, "chef's counter", 1, 55.00),
             ]
             conn.executemany(
                 """
-                INSERT INTO dining_table (restaurant_id, name, capacity, type, min_party_size)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO dining_table (restaurant_id, name, capacity, type, min_party_size, base_price)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
                 tables,
             )

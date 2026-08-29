@@ -3,8 +3,15 @@ multiple repository calls inside one transaction. This module owns
 transaction boundaries; app.repositories.reservation_repo never does.
 """
 
+import sqlite3
+from datetime import datetime, timedelta, timezone
+
 from app.database import get_connection, transaction
 from app.repositories import reservation_repo
+from app.services import pricing_service
+from app.slots import compute_slot_indices
+
+HOLD_DURATION_MINUTES = 10
 
 
 def _release(conn, reservation_id: int, new_status: str) -> None:
@@ -45,3 +52,88 @@ def cancel_reservation(reservation_id: int) -> None:
             _release(conn, reservation_id, "CANCELLED")
     finally:
         conn.close()
+
+
+def create_reservation(
+    *,
+    restaurant_id: int,
+    table_id: int,
+    user_id: int,
+    person_count: int,
+    date: str,
+    hour: int,
+    minute: int,
+    duration_minutes: int,
+    idempotency_key: str,
+) -> sqlite3.Row:
+    """Claim the requested slots for a new HELD reservation, atomically.
+
+    A repeat call with the same idempotency_key returns the original
+    result instead of attempting a new claim, safe against both a
+    client retrying after a dropped response, and two truly concurrent
+    submits of the same attempt racing each other.
+    """
+    conn = get_connection()
+    try:
+        existing = reservation_repo.get_by_idempotency_key(conn, idempotency_key)
+        if existing is not None:
+            return existing
+
+        slot_indices = compute_slot_indices(hour, minute, duration_minutes)
+
+        try:
+            with transaction(conn):
+                price = pricing_service.calculate_price(
+                    conn, restaurant_id=restaurant_id, table_id=table_id, date=date, slot_indices=slot_indices
+                )
+                expiry_time = (
+                    datetime.now(timezone.utc) + timedelta(minutes=HOLD_DURATION_MINUTES)
+                ).strftime("%Y-%m-%d %H:%M:%S")
+
+                reservation_id = reservation_repo.insert_reservation(
+                    conn,
+                    status="HELD",
+                    restaurant_id=restaurant_id,
+                    table_id=table_id,
+                    user_id=user_id,
+                    person_count=person_count,
+                    price=price,
+                    idempotency_key=idempotency_key,
+                    expiry_time=expiry_time,
+                )
+                _claim_slots_with_reclaim(conn, reservation_id, table_id, date, slot_indices)
+        except sqlite3.IntegrityError:
+            # Either a genuine, unreclaimable slot conflict, or this
+            # exact idempotency_key just won a race against itself on
+            # another connection. Either way, the answer is the same:
+            # check for the row that race would have produced.
+            existing = reservation_repo.get_by_idempotency_key(conn, idempotency_key)
+            if existing is not None:
+                return existing
+            raise
+
+        return reservation_repo.get_by_id(conn, reservation_id)
+    finally:
+        conn.close()
+
+
+def _claim_slots_with_reclaim(conn, reservation_id: int, table_id: int, date: str, slot_indices: list[int]) -> None:
+    """Insert one SlotClaim per slot. If a slot is blocked by a HELD
+    reservation already past its own expiry, release it inline and
+    retry that slot, the lazy-check backstop for the gap between
+    background sweeps. A block that isn't reclaimable propagates as a
+    genuine conflict and rolls back the whole reservation.
+    """
+    for slot_index in slot_indices:
+        try:
+            reservation_repo.insert_slot_claim(
+                conn, reservation_id=reservation_id, table_id=table_id, date=date, slot_index=slot_index
+            )
+        except sqlite3.IntegrityError:
+            blocker_id = reservation_repo.find_reclaimable_blocker(conn, table_id, date, slot_index)
+            if blocker_id is None:
+                raise
+            _release(conn, blocker_id, "EXPIRED")
+            reservation_repo.insert_slot_claim(
+                conn, reservation_id=reservation_id, table_id=table_id, date=date, slot_index=slot_index
+            )
