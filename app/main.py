@@ -11,7 +11,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.database import init_db, seed_if_empty
-from app.routers import agent, reservations, restaurants
+from app.routers import agent, offers, reservations, restaurants
 from app.services.reservation_service import release_expired_reservations
 
 SWEEP_INTERVAL_SECONDS = 30
@@ -37,6 +37,7 @@ app = FastAPI(title="Reservation Intelligence", lifespan=lifespan)
 app.include_router(reservations.router)
 app.include_router(restaurants.router)
 app.include_router(agent.router)
+app.include_router(offers.router)
 
 
 @app.exception_handler(sqlite3.IntegrityError)

@@ -7,9 +7,9 @@ promotional decisions inside clearly defined autonomy boundaries.
 ## Status
 
 Work in progress, built incrementally. What exists so far: the database schema,
-the reservation lifecycle, dynamic pricing, the booking API, two agent skills,
-and the Reservation Operations Agent that routes between them. Still to come:
-a third skill and the dashboard.
+the reservation lifecycle, dynamic pricing, the booking API, all three agent
+skills, and the Reservation Operations Agent that routes between them. Still
+to come: the dashboard.
 
 ## Requirements
 
@@ -55,12 +55,15 @@ pytest
   they call into services and repositories, never SQL directly.
 - `app/skills/`: agent skills. Each one gathers context through the existing
   repositories/services, then makes a single structured-output LLM call to
-  reason over it. Suggestion only, no skill books, cancels, or otherwise
-  mutates anything itself, the caller decides whether to act on it.
+  reason over it. Skills 1 and 2 only ever suggest, they never mutate
+  anything, the caller decides whether to act. Skill 3 is graduated instead
+  of binary: a promotional discount within a menu item's pre-approved ceiling
+  is created live immediately, above the ceiling it's created pending staff
+  approval, that's the only skill that writes to the database itself.
 - `app/reservation_agent.py`: the Reservation Operations Agent. Takes a
-  plain-language description of a staff situation, binds both skills to an
-  LLM as tools, and lets the LLM decide which one applies. The agent only
-  ever decides *which* skill to run, it never mutates anything itself either.
+  plain-language description of a staff situation, binds all three skills to
+  an LLM as tools, and lets the LLM decide which one applies. The agent only
+  ever decides *which* skill to run, it never mutates anything itself.
 - `app/main.py`: the FastAPI app, including a background task that sweeps for
   expired holds on a fixed interval, so a reservation's stored status stays
   accurate without depending on something else happening to read or contend
@@ -77,8 +80,14 @@ pytest
   time after a failed booking attempt.
 - `POST /agent/evaluate-min-party-override`: skill 2, evaluates whether to
   seat a party below a table's minimum size, given current demand.
+- `POST /agent/recommend-offer`: skill 3, recommends a promotional offer when
+  occupancy is low, creating it live or pending staff approval depending on
+  whether it's within the menu item's pre-approved discount ceiling.
 - `POST /agent/handle`: the Reservation Operations Agent entry point, describe
   a situation in plain language, it decides which skill (if any) applies.
+- `GET /restaurants/{id}/menu-items`, `GET /restaurants/{id}/offers`,
+  `POST /offers` (staff-created, always live immediately),
+  `POST /offers/{id}/approve`, `POST /offers/{id}/reject`: offer management.
 
 ### Concurrency model, in short
 

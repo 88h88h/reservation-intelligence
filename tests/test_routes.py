@@ -173,3 +173,49 @@ def test_confirm_then_cancel_flow(client):
         params={"date": DATE, "hour": 19, "minute": 0, "duration_minutes": 60, "person_count": 2},
     ).json()
     assert table_id in [t["id"] for t in availability]
+
+
+def test_list_menu_items_returns_seeded_data(client):
+    restaurant_id, _ = _seeded_ids(client)
+    response = client.get(f"/restaurants/{restaurant_id}/menu-items")
+    assert response.status_code == 200
+    items = response.json()
+    assert len(items) == 2
+    assert {i["name"] for i in items} == {"Tiramisu", "House Cocktail"}
+
+
+def test_create_offer_is_active_immediately(client):
+    restaurant_id, _ = _seeded_ids(client)
+    menu_item_id = client.get(f"/restaurants/{restaurant_id}/menu-items").json()[0]["id"]
+
+    response = client.post("/offers", json={"menu_item_id": menu_item_id, "proposed_value": 10.00})
+    assert response.status_code == 201
+    body = response.json()
+    assert body["status"] == "ACTIVE"
+
+    listed = client.get(f"/restaurants/{restaurant_id}/offers").json()
+    assert any(o["id"] == body["id"] for o in listed)
+
+
+def test_create_offer_for_unknown_menu_item_is_404(client):
+    response = client.post("/offers", json={"menu_item_id": 999, "proposed_value": 5.00})
+    assert response.status_code == 404
+
+
+def test_approve_and_reject_offer_lifecycle(client):
+    restaurant_id, _ = _seeded_ids(client)
+    menu_item_id = client.get(f"/restaurants/{restaurant_id}/menu-items").json()[0]["id"]
+
+    created = client.post("/offers", json={"menu_item_id": menu_item_id, "proposed_value": 10.00}).json()
+
+    # Already ACTIVE: approving again is a harmless no-op, not an error.
+    approve_again = client.post(f"/offers/{created['id']}/approve")
+    assert approve_again.status_code == 200
+    assert approve_again.json()["status"] == "ACTIVE"
+
+    # Rejecting an ACTIVE offer is a genuinely invalid transition.
+    reject_active = client.post(f"/offers/{created['id']}/reject")
+    assert reject_active.status_code == 409
+
+    unknown = client.post("/offers/999/approve")
+    assert unknown.status_code == 404

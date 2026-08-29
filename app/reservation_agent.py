@@ -25,6 +25,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 from app.skills.skill1_find_alternatives import suggest_alternatives
 from app.skills.skill2_min_party_override import evaluate_override
+from app.skills.skill3_recommend_offer import recommend_offer
 
 load_dotenv()
 
@@ -36,14 +37,14 @@ def handle_situation(
     *,
     situation: str,
     restaurant_id: int,
-    table_id: int,
-    date: str,
-    hour: int,
-    minute: int,
-    duration_minutes: int,
-    person_count: int,
+    table_id: int | None = None,
+    date: str | None = None,
+    hour: int | None = None,
+    minute: int | None = None,
+    duration_minutes: int | None = None,
+    person_count: int | None = None,
 ) -> dict:
-    context = dict(
+    booking_context = dict(
         restaurant_id=restaurant_id,
         table_id=table_id,
         date=date,
@@ -58,16 +59,24 @@ def handle_situation(
         """Use when a booking request FAILED, the requested table or time
         is no longer available, and staff need an alternative table or
         nearby time to offer the diner instead."""
-        return suggest_alternatives(conn, **context).model_dump()
+        return suggest_alternatives(conn, **booking_context).model_dump()
 
     @tool
     def evaluate_min_party_override_tool() -> dict:
         """Use when a party's size is BELOW the requested table's minimum
         party size, and staff want to know whether seating them there
         anyway is a good idea given current demand."""
-        return evaluate_override(conn, **context).model_dump()
+        return evaluate_override(conn, **booking_context).model_dump()
 
-    tools = [find_alternatives_tool, evaluate_min_party_override_tool]
+    @tool
+    def recommend_offer_tool() -> dict:
+        """Use when staff ask about running a promotional offer or
+        discount right now, or want to know if current demand is low
+        enough to warrant one. Only needs the restaurant, not a specific
+        table or time."""
+        return recommend_offer(conn, restaurant_id=restaurant_id).model_dump()
+
+    tools = [find_alternatives_tool, evaluate_min_party_override_tool, recommend_offer_tool]
     llm_with_tools = _llm.bind_tools(tools)
 
     response = llm_with_tools.invoke(

@@ -1,27 +1,13 @@
 from fastapi import APIRouter
-from pydantic import BaseModel
 
 from app.database import get_connection
 from app.reservation_agent import handle_situation
+from app.schemas import AgentHandleRequest, AgentHandleResponse, BookingRequestContext
 from app.skills.skill1_find_alternatives import AlternativeSuggestion, suggest_alternatives
 from app.skills.skill2_min_party_override import MinPartySizeOverrideDecision, evaluate_override
+from app.skills.skill3_recommend_offer import OfferResult, recommend_offer
 
 router = APIRouter(prefix="/agent", tags=["agent"])
-
-
-class BookingRequestContext(BaseModel):
-    """The shape of an in-progress booking request, shared by skills
-    that reason about a specific (restaurant, table, date/time, party)
-    combination rather than acting on an already-created reservation.
-    """
-
-    restaurant_id: int
-    table_id: int
-    date: str
-    hour: int
-    minute: int
-    duration_minutes: int
-    person_count: int
 
 
 @router.post("/find-alternatives", response_model=AlternativeSuggestion)
@@ -42,15 +28,13 @@ def evaluate_min_party_override(request: BookingRequestContext):
         conn.close()
 
 
-class AgentHandleRequest(BookingRequestContext):
-    situation: str
-
-
-class AgentHandleResponse(BaseModel):
-    handled: bool
-    tool_used: str | None
-    result: dict | None
-    message: str | None
+@router.post("/recommend-offer", response_model=OfferResult)
+def recommend_offer_route(restaurant_id: int):
+    conn = get_connection()
+    try:
+        return recommend_offer(conn, restaurant_id=restaurant_id)
+    finally:
+        conn.close()
 
 
 @router.post("/handle", response_model=AgentHandleResponse)
