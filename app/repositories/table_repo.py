@@ -21,6 +21,29 @@ def list_for_restaurant(conn: sqlite3.Connection, restaurant_id: int) -> list[sq
     ).fetchall()
 
 
+def is_free(conn: sqlite3.Connection, *, table_id: int, date: str, slot_indices: list[int]) -> bool:
+    """Whether a specific table has no active claim (CONFIRMED, or HELD
+    and not yet past its own expiry) on any of the given slots.
+    """
+    if not slot_indices:
+        return True
+    placeholders = ",".join("?" for _ in slot_indices)
+    row = conn.execute(
+        f"""
+        SELECT 1
+        FROM slot_claim sc
+        JOIN reservation r ON r.id = sc.reservation_id
+        WHERE sc.table_id = ?
+          AND sc.date = ?
+          AND sc.slot_index IN ({placeholders})
+          AND (r.status = 'CONFIRMED' OR (r.status = 'HELD' AND r.expiry_time >= datetime('now')))
+        LIMIT 1
+        """,
+        (table_id, date, *slot_indices),
+    ).fetchone()
+    return row is None
+
+
 def find_available(
     conn: sqlite3.Connection, *, restaurant_id: int, date: str, slot_indices: list[int], person_count: int
 ) -> list[sqlite3.Row]:

@@ -7,19 +7,22 @@ promotional decisions inside clearly defined autonomy boundaries.
 ## Status
 
 Work in progress, built incrementally. What exists so far: the database schema,
-the reservation lifecycle (booking release, expiry, cancellation), and the test
-suite covering the concurrency and correctness guarantees. Still to come: the
-booking API, the agent skills, and the dashboard.
+the reservation lifecycle, dynamic pricing, the booking API, and the first
+agent skill (finding alternatives after a failed booking). Still to come: the
+remaining agent skills and the dashboard.
 
 ## Requirements
 
 - Python 3.12+
 - No Docker, no external services. SQLite runs as a plain local file.
+- A Google Gemini API key, only needed to actually run the agent skills.
+  Everything else (booking, pricing, availability) works without one.
 
 ## Setup
 
 ```bash
 pip install -r requirements.txt
+cp .env.example .env  # then fill in GOOGLE_API_KEY
 ```
 
 ## Running the app
@@ -46,11 +49,28 @@ pytest
 - `app/repositories/`: raw data access, one function per operation, no
   business logic. The only place SQL is allowed to live.
 - `app/services/`: business rules and transaction boundaries, built on top of
-  the repositories. Reservation release (on cancellation or expiry) lives here.
+  the repositories. Reservation release (on cancellation or expiry) and
+  demand-driven pricing live here.
+- `app/routers/`: the FastAPI route handlers, one module per resource, thin,
+  they call into services and repositories, never SQL directly.
+- `app/skills/`: agent skills. Each one gathers context through the existing
+  repositories/services, then makes a single structured-output LLM call to
+  reason over it. Suggestion only, no skill books, cancels, or otherwise
+  mutates anything itself, the caller decides whether to act on it.
 - `app/main.py`: the FastAPI app, including a background task that sweeps for
   expired holds on a fixed interval, so a reservation's stored status stays
   accurate without depending on something else happening to read or contend
   for it.
+
+## API overview
+
+- `GET /restaurants`, `GET /restaurants/{id}/tables`,
+  `GET /restaurants/{id}/availability`: browsing.
+- `POST /reservations`, `GET /reservations/{id}`,
+  `POST /reservations/{id}/confirm`, `POST /reservations/{id}/cancel`: booking
+  lifecycle.
+- `POST /agent/find-alternatives`: agent skill 1, suggests an alternative
+  table or time after a failed booking attempt.
 
 ### Concurrency model, in short
 
