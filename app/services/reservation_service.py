@@ -54,6 +54,33 @@ def cancel_reservation(reservation_id: int) -> None:
         conn.close()
 
 
+def confirm_reservation(reservation_id: int) -> tuple[sqlite3.Row | None, bool]:
+    """HELD -> CONFIRMED. Slot claims are untouched, the reservation
+    still needs the slots it already holds, only its status changes.
+
+    Returns (row, transitioned). transitioned reflects whether the
+    UPDATE actually matched a HELD row, not just whether the row's
+    final status happens to read CONFIRMED, confirming an
+    already-CONFIRMED reservation is a no-op UPDATE, and reading the
+    status back afterward can't tell that apart from a real transition.
+    """
+    conn = get_connection()
+    try:
+        with transaction(conn):
+            cursor = conn.execute(
+                """
+                UPDATE reservation
+                SET status = 'CONFIRMED', time_of_confirmation = datetime('now')
+                WHERE id = ? AND status = 'HELD'
+                """,
+                (reservation_id,),
+            )
+            transitioned = cursor.rowcount > 0
+        return reservation_repo.get_by_id(conn, reservation_id), transitioned
+    finally:
+        conn.close()
+
+
 def create_reservation(
     *,
     restaurant_id: int,

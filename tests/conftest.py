@@ -1,4 +1,5 @@
 import pytest
+from fastapi.testclient import TestClient
 
 import app.database as db
 
@@ -12,3 +13,11 @@ def test_db(tmp_path, monkeypatch):
     monkeypatch.setattr(db, "DB_PATH", db_path)
     db.init_db()
     yield db_path
+
+
+@pytest.fixture
+def client(test_db):
+    from app.main import app
+
+    with TestClient(app) as test_client:
+        yield test_client
