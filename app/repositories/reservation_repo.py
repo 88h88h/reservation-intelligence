@@ -39,6 +39,12 @@ def insert_slot_claim(conn: sqlite3.Connection, *, reservation_id: int, table_id
     )
 
 
+def list_for_restaurant(conn: sqlite3.Connection, restaurant_id: int) -> list[sqlite3.Row]:
+    return conn.execute(
+        "SELECT * FROM reservation WHERE restaurant_id = ? ORDER BY created_at DESC", (restaurant_id,)
+    ).fetchall()
+
+
 def get_by_id(conn: sqlite3.Connection, reservation_id: int) -> sqlite3.Row | None:
     return conn.execute("SELECT * FROM reservation WHERE id = ?", (reservation_id,)).fetchone()
 

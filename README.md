@@ -6,10 +6,9 @@ promotional decisions inside clearly defined autonomy boundaries.
 
 ## Status
 
-Work in progress, built incrementally. What exists so far: the database schema,
-the reservation lifecycle, dynamic pricing, the booking API, all three agent
-skills, and the Reservation Operations Agent that routes between them. Still
-to come: the dashboard.
+Feature-complete for the minimum requirements: database schema, reservation
+lifecycle, dynamic pricing, the booking API, all three agent skills, the
+Reservation Operations Agent, and a dashboard tying it together.
 
 ## Requirements
 
@@ -31,10 +30,11 @@ cp .env.example .env  # then fill in GOOGLE_API_KEY
 uvicorn app.main:app --reload
 ```
 
-On startup, the app creates the SQLite database (`reservation.db`) if it does
-not exist yet, applies the schema, and seeds it with sample data (one
-restaurant, a few tables, two users, a couple of menu items) so there is
-something real to work against immediately.
+Then open `http://localhost:8000` for the dashboard. On startup, the app
+creates the SQLite database (`reservation.db`) if it does not exist yet,
+applies the schema, and seeds it with sample data (one restaurant, a few
+tables, two users, a couple of menu items) so there is something real to work
+against immediately.
 
 ## Running the tests
 
@@ -67,7 +67,14 @@ pytest
 - `app/main.py`: the FastAPI app, including a background task that sweeps for
   expired holds on a fixed interval, so a reservation's stored status stays
   accurate without depending on something else happening to read or contend
-  for it.
+  for it, and serves the dashboard.
+- `app/static/`: the dashboard, plain HTML/CSS/vanilla JS, no build step. The
+  agent isn't a separate playground bolted onto the page, it surfaces in
+  context: skill 1 appears inline when a booking attempt just failed, skill 2
+  appears inline next to a table flagged below its minimum party size, skill
+  3 has a direct "recommend a promo" action in the offers section, and a
+  free-text panel demonstrates the Reservation Operations Agent's actual
+  routing behavior directly.
 
 ## API overview
 

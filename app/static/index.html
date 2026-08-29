@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reservation Intelligence</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1 id="restaurant-name">Reservation Intelligence</h1>
+      <div class="subtitle">Operations dashboard</div>
+    </div>
+    <div class="occupancy-pill">
+      <span class="occupancy-dot"></span>
+      <span id="occupancy-label">Occupancy: n/a</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Tables</h2>
+      <div id="tables-grid" class="table-grid skeleton">Loading…</div>
+    </section>
+
+    <section class="card">
+      <h2>New reservation</h2>
+      <form id="availability-form" class="stacked">
+        <div class="field-row">
+          <div>
+            <label for="res-date">Date</label>
+            <input type="date" id="res-date" required />
+          </div>
+          <div>
+            <label for="res-time">Time</label>
+            <input type="time" id="res-time" step="900" required />
+          </div>
+        </div>
+        <div class="field-row">
+          <div>
+            <label for="res-duration">Duration (minutes)</label>
+            <select id="res-duration">
+              <option value="30">30</option>
+              <option value="45">45</option>
+              <option value="60" selected>60</option>
+              <option value="90">90</option>
+              <option value="120">120</option>
+            </select>
+          </div>
+          <div>
+            <label for="res-party">Party size</label>
+            <input type="number" id="res-party" min="1" value="2" required />
+          </div>
+        </div>
+        <button type="submit" class="primary">Check availability</button>
+      </form>
+      <div id="availability-results"></div>
+      <div id="booking-outcome"></div>
+    </section>
+
+    <section class="card">
+      <h2>Reservations</h2>
+      <div id="reservations-list" class="list skeleton">Loading…</div>
+    </section>
+
+    <section class="card">
+      <h2>Menu &amp; offers</h2>
+      <div id="menu-items-list" class="list skeleton">Loading…</div>
+      <form id="manual-offer-form" class="stacked" style="margin-top: 0.9rem;">
+        <div class="field-row">
+          <div>
+            <label for="offer-menu-item">Menu item</label>
+            <select id="offer-menu-item"></select>
+          </div>
+          <div>
+            <label for="offer-amount">Discount ($)</label>
+            <input type="number" id="offer-amount" min="0" step="0.5" value="2" />
+          </div>
+        </div>
+        <button type="submit">Run offer now</button>
+      </form>
+      <h2 style="margin-top: 1.1rem;">Active &amp; pending offers</h2>
+      <div id="offers-list" class="list skeleton">Loading…</div>
+    </section>
+
+    <section class="card agent-card full-width">
+      <h2><span class="tag">Agent</span> Reservation Operations Agent</h2>
+      <p class="hint">
+        Describe a situation in plain language, the agent decides which skill applies:
+        finding alternatives after a failed booking, evaluating a below-minimum party size,
+        or recommending a promotional offer when occupancy is low.
+      </p>
+      <form id="agent-form" class="stacked">
+        <textarea id="agent-situation" placeholder='e.g. "A party of 2 wants table 4 which needs 4 minimum, is that ok?"'></textarea>
+        <button type="submit" class="agent">Ask the agent</button>
+      </form>
+      <div id="agent-result"></div>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

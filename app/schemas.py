@@ -133,6 +133,11 @@ class AgentHandleRequest(BaseModel):
     person_count: int | None = None
 
 
+class OccupancyResponse(BaseModel):
+    restaurant_id: int
+    occupancy_ratio: float
+
+
 class AgentHandleResponse(BaseModel):
     handled: bool
     tool_used: str | None = None

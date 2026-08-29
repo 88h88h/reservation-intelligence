@@ -26,7 +26,7 @@ from app.services.occupancy_service import current_occupancy_ratio
 
 load_dotenv()
 
-_llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite")
+_llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash-lite")
 
 LOW_OCCUPANCY_THRESHOLD = 0.4
 

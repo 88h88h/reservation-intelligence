@@ -6,9 +6,11 @@ relying on someone happening to read or contend for it.
 import asyncio
 import sqlite3
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.database import init_db, seed_if_empty
 from app.routers import agent, offers, reservations, restaurants
@@ -38,6 +40,14 @@ app.include_router(reservations.router)
 app.include_router(restaurants.router)
 app.include_router(agent.router)
 app.include_router(offers.router)
+
+_STATIC_DIR = Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
+
+
+@app.get("/")
+def dashboard() -> FileResponse:
+    return FileResponse(_STATIC_DIR / "index.html")
 
 
 @app.exception_handler(sqlite3.IntegrityError)

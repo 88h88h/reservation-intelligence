@@ -29,7 +29,7 @@ from app.skills.skill3_recommend_offer import recommend_offer
 
 load_dotenv()
 
-_llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite")
+_llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash-lite")
 
 
 def handle_situation(

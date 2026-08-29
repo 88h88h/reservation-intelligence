@@ -31,6 +31,40 @@ def test_list_tables_for_unknown_restaurant_is_404(client):
     assert response.status_code == 404
 
 
+def test_occupancy_is_zero_with_no_confirmed_reservations(client):
+    restaurant_id, _ = _seeded_ids(client)
+    response = client.get(f"/restaurants/{restaurant_id}/occupancy")
+    assert response.status_code == 200
+    assert response.json()["occupancy_ratio"] == 0.0
+
+
+def test_occupancy_for_unknown_restaurant_is_404(client):
+    response = client.get("/restaurants/999/occupancy")
+    assert response.status_code == 404
+
+
+def test_list_reservations_for_restaurant(client):
+    restaurant_id, tables = _seeded_ids(client)
+    table_id = tables[0]["id"]
+    client.post(
+        "/reservations",
+        json={
+            "restaurant_id": restaurant_id,
+            "table_id": table_id,
+            "user_id": 1,
+            "person_count": 2,
+            "date": DATE,
+            "hour": 19,
+            "minute": 0,
+            "duration_minutes": 60,
+            "idempotency_key": "list-key",
+        },
+    )
+    response = client.get(f"/restaurants/{restaurant_id}/reservations")
+    assert response.status_code == 200
+    assert any(r["idempotency_key"] == "list-key" for r in response.json())
+
+
 def test_availability_lists_all_bookable_tables_with_no_bookings(client):
     restaurant_id, tables = _seeded_ids(client)
 

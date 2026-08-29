@@ -1,0 +1,350 @@
+:root {
+  --bg: #f7f5f2;
+  --surface: #ffffff;
+  --border: #e6e1d8;
+  --text: #2b2622;
+  --text-muted: #7a7269;
+  --accent: #b5562f;
+  --accent-dark: #8f4322;
+  --accent-soft: #f5e2d8;
+  --agent: #2f5d50;
+  --agent-soft: #e2ede9;
+  --shadow: 0 1px 2px rgba(43, 38, 34, 0.06), 0 4px 12px rgba(43, 38, 34, 0.05);
+
+  --status-held-bg: #fdf1d6;
+  --status-held-fg: #8a5a00;
+  --status-confirmed-bg: #dff2e6;
+  --status-confirmed-fg: #226b45;
+  --status-cancelled-bg: #f0eeea;
+  --status-cancelled-fg: #7a7269;
+  --status-expired-bg: #f5e5e2;
+  --status-expired-fg: #9a4433;
+  --status-active-bg: #dff2e6;
+  --status-active-fg: #226b45;
+  --status-pending-bg: #fdf1d6;
+  --status-pending-fg: #8a5a00;
+  --status-rejected-bg: #f5e5e2;
+  --status-rejected-fg: #9a4433;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.45;
+}
+
+header.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.75rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+header.topbar h1 {
+  font-size: 1.15rem;
+  margin: 0;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+header.topbar .subtitle {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-top: 0.15rem;
+}
+
+.occupancy-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.occupancy-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+main {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+@media (max-width: 900px) {
+  main {
+    grid-template-columns: 1fr;
+  }
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
+
+section.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.25rem 1.4rem;
+  box-shadow: var(--shadow);
+}
+
+section.card h2 {
+  font-size: 1rem;
+  margin: 0 0 0.9rem;
+  font-weight: 650;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+section.agent-card {
+  border-color: var(--agent);
+  background: linear-gradient(180deg, var(--agent-soft) 0%, var(--surface) 140px);
+}
+
+section.agent-card h2 {
+  color: var(--agent);
+}
+
+.tag {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--agent);
+  color: white;
+}
+
+.table-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.65rem;
+}
+
+.table-chip {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.82rem;
+  background: var(--bg);
+}
+
+.table-chip .name {
+  font-weight: 650;
+  margin-bottom: 0.15rem;
+}
+
+.table-chip .meta {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.85rem;
+  background: var(--bg);
+}
+
+.row .main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.row .main .title {
+  font-weight: 600;
+}
+
+.row .main .subtitle {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.row .actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.badge.HELD, .badge.PENDING_CONFIRMATION {
+  background: var(--status-held-bg);
+  color: var(--status-held-fg);
+}
+
+.badge.CONFIRMED, .badge.ACTIVE {
+  background: var(--status-confirmed-bg);
+  color: var(--status-confirmed-fg);
+}
+
+.badge.CANCELLED {
+  background: var(--status-cancelled-bg);
+  color: var(--status-cancelled-fg);
+}
+
+.badge.EXPIRED, .badge.REJECTED {
+  background: var(--status-expired-bg);
+  color: var(--status-expired-fg);
+}
+
+button {
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+button:hover {
+  background: var(--bg);
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+button.primary:hover {
+  background: var(--accent-dark);
+}
+
+button.agent {
+  background: var(--agent);
+  border-color: var(--agent);
+  color: white;
+}
+
+button.agent:hover {
+  background: #24473d;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+form.stacked {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+label {
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: var(--text-muted);
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+input, select, textarea {
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  width: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 4.5rem;
+}
+
+.hint {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  margin-top: 0.35rem;
+}
+
+.callout {
+  border-radius: 10px;
+  padding: 0.7rem 0.85rem;
+  font-size: 0.82rem;
+  margin-top: 0.65rem;
+}
+
+.callout.suggest {
+  background: var(--status-held-bg);
+  color: var(--status-held-fg);
+  border: 1px solid #f0d38a;
+}
+
+.callout.agent-result {
+  background: var(--agent-soft);
+  color: var(--agent);
+  border: 1px solid #bcd8cf;
+}
+
+.callout.error {
+  background: var(--status-expired-bg);
+  color: var(--status-expired-fg);
+  border: 1px solid #e6bcb0;
+}
+
+.empty {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  padding: 0.5rem 0;
+}
+
+.skeleton {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
