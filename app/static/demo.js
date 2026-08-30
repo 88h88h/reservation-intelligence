@@ -39,34 +39,30 @@ function buildStaffSteps() {
 
   return [
     {
-      caption: "This is Reservation Intelligence, a restaurant booking platform with an agentic layer on top. FastAPI backend, SQLite storage, no Docker, kept deliberately simple to run locally. What's worth watching for isn't the CRUD, it's how it handles real concurrency, and where an agent genuinely earns its place instead of being bolted on.",
+      caption: "This is Reservation Intelligence, a restaurant booking platform with an AI agent layer that helps staff make decisions. Let's walk through it.",
       action: async () => Demo.highlight(document.querySelector("header.topbar")),
     },
     {
-      caption: "One idea underneath almost everything you're about to see: reservations aren't stored as continuous time ranges, they're quantized into 15-minute slots, and a booking claims a specific set of those slots as its own rows. That turns double-booking prevention from a hard interval-overlap problem into a plain database uniqueness constraint, correctness enforced by the schema, not application code trying to get a race condition right.",
+      caption: "One quick thing to know going in: every booking is split into 15-minute time slots behind the scenes. That's what makes double-booking truly impossible, more on that after the demo.",
       action: async () => Demo.highlight(document.getElementById("tables-grid").closest(".card")),
     },
     {
-      caption: "You'll also see a Reservation Operations Agent along the way: three distinct skills, each with its own deliberate autonomy boundary, some only ever suggest, one can act on its own within a pre-approved range, bound together through real LLM tool-calling, not a hardcoded router. More on each as they come up.",
-      action: async () => {},
-    },
-    {
-      caption: "One more thing worth having upfront: occupancy is tracked two different ways here, on purpose, not a bug you'll notice later. A real-time signal, how full the restaurant is right now, today, drives that badge up top, the diner-facing vibe display, and the promotional-offer skill, all answering 'is right now a good moment'. A separate, per-slot signal, how full one specific future date and time already is, drives pricing and the minimum-party-size skill, answering 'is this particular booking a good idea'. They'll show different numbers at the same time, correctly, you'll see both as we go.",
+      caption: "Quick heads-up: you'll see two different occupancy percentages during this demo. Both are correct, just answering slightly different questions, I'll explain after.",
       action: async () => Demo.highlight(document.getElementById("occupancy-pill")),
     },
     {
-      caption: "Five tables here, each with a real type, capacity, and minimum party size, the actual inventory the rest of this demo works against.",
+      caption: "Five tables here, each with its own type, capacity, and minimum party size.",
       action: async () => Demo.highlight(document.getElementById("tables-grid").closest(".card")),
     },
     {
-      caption: "Let's set up a normal booking, Table 1, two guests, 7 PM, claiming four of those 15-minute slots. This becomes the baseline we'll deliberately collide with next.",
+      caption: "Let's book Table 1 for two guests at 7 PM.",
       action: async () => {
         Demo.highlight(document.getElementById("availability-form"));
         await submitAvailabilityForm("19:00", 2);
       },
     },
     {
-      caption: "Table 1 is free for this date and time specifically, other bookings for it may already exist on other dates, and each row below shows exactly which, so that's checkable, not just asserted. Booking it now, invisibly, this request carries a unique idempotency key generated client-side, so a duplicate click or a retried request can never create two reservations. The price here is genuinely computed, not fixed, it just has no demand to react to yet, since nothing else is booked for this date. Watch it change in a moment once that's no longer true.",
+      caption: "Table 1 is free, let's book it.",
       action: async () => {
         const row = await Demo.waitFor(() =>
           Demo.findRowByTitleSubstring(document.getElementById("availability-results"), table1Name)
@@ -76,7 +72,7 @@ function buildStaffSteps() {
       },
     },
     {
-      caption: "It's held, not confirmed yet, visible right there in the badge. Every slot this reservation needs got claimed together in one database transaction, all or nothing, so no one can ever observe a half-booked reservation. Something invisible is also true right now: if nobody confirms it in time, a background sweep releases it automatically, so a stale hold can never silently block this table forever.",
+      caption: "It's held, not confirmed yet. If nobody confirms it in time, it's released automatically, so a table can never get stuck.",
       action: async () => {
         const row = await Demo.waitFor(() => document.getElementById("reservations-list").querySelector(".row"));
         Demo.highlight(row);
@@ -95,7 +91,7 @@ function buildStaffSteps() {
       },
     },
     {
-      caption: "Now the real test: a second request for that exact same table and time. Not run through this screen's own search, which would correctly show Table 1 as taken by now, this stands in for a request reaching the server independent of what this dashboard happens to display right now, another terminal, a phone booking being entered, or, as we'll see in a minute, a diner on the other side of this same system. The guarantee has to hold no matter where the request comes from, that's the actual point.",
+      caption: "Now let's simulate someone else trying to book that exact same table and time, at the same moment.",
       action: async () => {
         const outcomeEl = document.getElementById("booking-outcome");
         Demo.highlight(outcomeEl);
@@ -107,7 +103,7 @@ function buildStaffSteps() {
       },
     },
     {
-      caption: "Rejected outright, a UNIQUE constraint on the slot table does this, not application code checking and then writing in two separate steps, that gap is exactly where races like this usually slip through. This is where the agent adds value: suggesting a fix, not just failing.",
+      caption: "Rejected, that table's genuinely taken. Now the agent steps in to suggest an alternative instead of just failing.",
       action: async () => {
         const btn = document.getElementById("booking-outcome").querySelector("button.agent");
         await Demo.clickWithFeedback(btn);
@@ -117,12 +113,12 @@ function buildStaffSteps() {
     {
       caption: () => {
         if (!demoAltBookingInfo) {
-          return "It reasoned through table type, timing, then capacity, in that priority order, a real LLM call over data we already computed, not the model guessing at availability itself. Let's accept its suggestion.";
+          return "It found an alternative that fits. Let's accept it.";
         }
         const { tableName, basePrice, actualPrice } = demoAltBookingInfo;
         return actualPrice > basePrice
-          ? `Booked ${tableName} at $${actualPrice.toFixed(2)}, above its $${basePrice.toFixed(2)} base price. That's the pricing engine reacting to real demand, Table 1's confirmed booking already claims part of this same 7 PM slot, computed, not staged.`
-          : `Booked ${tableName} at its base price, $${actualPrice.toFixed(2)}, still not enough competing demand at this exact slot to move it yet.`;
+          ? `Booked ${tableName} at $${actualPrice.toFixed(2)}, a bit above its usual $${basePrice.toFixed(2)}, since demand for this time just went up.`
+          : `Booked ${tableName} at its usual price, $${actualPrice.toFixed(2)}.`;
       },
       action: async () => {
         const btn = await Demo.waitFor(() =>
@@ -143,14 +139,14 @@ function buildStaffSteps() {
       },
     },
     {
-      caption: "A different edge case now: what happens when a party doesn't meet a table's minimum size? Does the system just block them and lose the booking outright?",
+      caption: "A different scenario now: what if a party is smaller than a table's minimum size?",
       action: async () => {
         Demo.highlight(document.getElementById("availability-form"));
         await submitAvailabilityForm("20:00", 2);
       },
     },
     {
-      caption: "Table 4 still shows up, just flagged, minimum party size is a soft preference, never a hard block in the core booking API. That's a deliberate architectural choice, not a missing validation. Let's ask the agent whether it's worth seating them here anyway.",
+      caption: "Table 4 still shows up, just flagged, since the minimum is a soft preference, not a hard rule. Let's ask the agent if it's still a good idea to seat them here.",
       action: async () => {
         const row = await Demo.waitFor(() =>
           Demo.findRowByTitleSubstring(document.getElementById("availability-results"), table4Name)
@@ -163,11 +159,7 @@ function buildStaffSteps() {
       },
     },
     {
-      caption: "It weighs real signals here, that per-slot occupancy and demand from earlier, plus how idle this table's been today and how close to closing. This is the kind of context-dependent judgment call that doesn't reduce cleanly to an if-statement, which is exactly why it's the agent's job, not hardcoded logic.",
-      action: async () => {},
-    },
-    {
-      caption: "One more decision point: is now a good moment for a promotional offer? This one uses the real-time signal from earlier, the same one behind the badge and the vibe display, a promo decision is about filling empty seats right now, not one future booking. Below a threshold, it skips the LLM call entirely rather than paying for a guaranteed no.",
+      caption: "One more decision: is now a good time to run a promotional offer?",
       action: async () => {
         const btn = document.getElementById("recommend-offer-btn");
         Demo.highlight(btn);
@@ -182,10 +174,10 @@ function buildStaffSteps() {
     {
       caption: () =>
         demoLastOfferStatus === "PENDING_CONFIRMATION"
-          ? "This is the graduated autonomy boundary in action: this discount was above the pre-approved range, so it's sitting here waiting for a real person, badge and all, not gone live on its own."
+          ? "This discount was above what's pre-approved, so it needs a staff member to approve it first."
           : demoLastOfferStatus === "ACTIVE"
-          ? "This one landed within the pre-approved range, so it went live immediately, no approval step needed, that's the other half of the same graduated boundary."
-          : "No offer was warranted this time, occupancy wasn't low enough to justify one, the threshold check skipped the LLM call entirely rather than paying for a guaranteed no.",
+          ? "This discount was within the pre-approved range, so it went live immediately, no approval needed."
+          : "No offer this time, occupancy wasn't low enough to justify one.",
       action: async () => {
         demoLastOfferStatus = null;
         if (!demoCreatedOfferId) {
@@ -201,9 +193,7 @@ function buildStaffSteps() {
     },
     {
       caption: () =>
-        demoLastOfferStatus === "PENDING_CONFIRMATION"
-          ? "The agent never even saw that ceiling when it proposed a number, so it couldn't just game staying under it, the boundary is enforced in code afterward. Let's approve it."
-          : "Nothing to approve here, moving on.",
+        demoLastOfferStatus === "PENDING_CONFIRMATION" ? "Let's approve it." : "Nothing to approve here, moving on.",
       action: async () => {
         if (demoLastOfferStatus !== "PENDING_CONFIRMATION") return;
         const approveBtn = Array.from(document.getElementById("offers-list").querySelectorAll("button")).find(
@@ -213,7 +203,7 @@ function buildStaffSteps() {
       },
     },
     {
-      caption: "Finally, the actual Reservation Operations Agent: real LLM tool-calling, both skills bound as callable tools, the model reads a plain description and decides which one applies itself, not a hardcoded if-else router matching keywords.",
+      caption: "Now let's try the agent's free-text interface: describe a situation in plain English, and it figures out what to do.",
       action: async () => {
         Demo.highlight(document.getElementById("agent-form"));
         await Demo.typeInto(
@@ -226,11 +216,11 @@ function buildStaffSteps() {
       },
     },
     {
-      caption: "It correctly routed this to the minimum-party-size skill, the same one triggered manually a moment ago, proving it's real routing, not a special case.",
+      caption: "It correctly figured out this is the same minimum-party-size situation from a moment ago.",
       action: async () => Demo.highlight(document.getElementById("agent-result")),
     },
     {
-      caption: "And staff keep full control throughout, cancelling reuses the same transactional release logic as everything else here, delete the slot claims and update the status together, atomically, so the table is genuinely free again, not just marked as if it were.",
+      caption: "Staff can also cancel a reservation any time, that frees the table right away.",
       action: async () => {
         const rows = Array.from(document.getElementById("reservations-list").querySelectorAll(".row"));
         const confirmedRow = rows.find((r) => r.querySelector(".badge")?.textContent === "CONFIRMED");
@@ -241,7 +231,7 @@ function buildStaffSteps() {
       },
     },
     {
-      caption: "That's the staff side, booking, conflict handling, and three agent skills, each with a real, distinct autonomy boundary. Now, the diner's side, starting with browsing restaurants by vibe, and we'll come back to this exact Table 1 booking from the other end of that same race.",
+      caption: "That covers the staff side. Now let's see the diner's experience, including what happens when a diner tries to book that same Table 1.",
       action: async () => {
         Demo.highlight(document.getElementById("diner-view-link"));
         await Demo.sleep(2000);

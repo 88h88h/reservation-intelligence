@@ -19,18 +19,18 @@ function pickDinerDemoTime() {
 function buildDinerSteps() {
   return [
     {
-      caption: "This is the diner-facing side of the same system, a second, deliberately different frontend on the same backend and the same booking guarantees, not a separate product. The whole point of this view: let someone judge the atmosphere before committing, not just see a booking form.",
+      caption: "This is the diner-facing side of the same system, where guests can check the vibe before booking.",
       action: async () => Demo.highlight(document.querySelector(".vibe-block")),
     },
     {
-      caption: "That vibe isn't a label someone typed in, it's a plain computed heuristic off real occupancy data, deliberately no camera, no sensors, no LLM call for something this simple to derive.",
+      caption: "That vibe label is calculated automatically from real occupancy, not typed in by hand.",
       action: async () => Demo.highlight(document.getElementById("occupancy-dots")),
     },
     {
       caption: () =>
         document.getElementById("offers-section").style.display !== "none"
-          ? "Active promotional offers surface right here, enticing, not pushy, and only shown when the restaurant actually chose to run one."
-          : "No promotional offers are running right now, and that's deliberate, they'd only surface here when occupancy is genuinely low enough to justify one.",
+          ? "Active promotional offers show up right here when there are any."
+          : "No promotional offers running right now, occupancy isn't low enough yet.",
       action: async () => {
         const section = document.getElementById("offers-section");
         Demo.highlight(section.style.display !== "none" ? section : document.querySelector(".diner-card"));
@@ -39,8 +39,8 @@ function buildDinerSteps() {
     {
       caption: () =>
         demoCarriedDate
-          ? `A moment ago, on the staff side, Table 1 got confirmed for 7 PM on ${demoCarriedDate}. Let's try that same table and time from here, the diner's side, and see what losing that race actually looks like from this end, not just that staff's request won.`
-          : "This diner demo is running on its own right now, not chained from the staff one, so there's no live booking on the other side to collide with, skipping ahead to a normal booking.",
+          ? `A moment ago, on the staff side, Table 1 got confirmed for 7 PM on ${demoCarriedDate}. Let's try booking that same table and time from here, the diner's side.`
+          : "Skipping ahead here, no live staff booking to collide with on this run.",
       action: async () => {
         if (!demoCarriedDate) return;
         const resultsEl = document.getElementById("diner-results");
@@ -57,7 +57,7 @@ function buildDinerSteps() {
     {
       caption: () =>
         demoCarriedDate
-          ? "That's the real skill 1 flow, from the diner's own side this time, not staff clicking a button in a dashboard. Same endpoint, same reasoning, a genuinely reused capability, not two separate implementations to keep in sync."
+          ? "The agent steps in here too, same feature as before, just from the diner's own side this time."
           : "Nothing to show here this run, moving on.",
       action: async () => {
         if (!demoCarriedDate) return;
@@ -71,7 +71,7 @@ function buildDinerSteps() {
       },
     },
     {
-      caption: "Now let's see an ordinary booking, one that doesn't collide with anything. It's the exact same POST /reservations endpoint the staff dashboard uses, one booking code path for both audiences, not two implementations to keep in sync.",
+      caption: "Now let's see an ordinary booking, one that doesn't collide with anything.",
       action: async () => {
         const form = document.getElementById("booking-form");
         Demo.highlight(form);
@@ -83,7 +83,7 @@ function buildDinerSteps() {
       },
     },
     {
-      caption: "Reserved, simple as that, the same atomic guarantee from the staff side applies here too. Staff will see and confirm it from their dashboard.",
+      caption: "Reserved. A staff member will see and confirm it from their dashboard.",
       action: async () => {
         const btn = await Demo.waitFor(() =>
           document.getElementById("diner-results").querySelector("button.primary")
@@ -96,7 +96,7 @@ function buildDinerSteps() {
       },
     },
     {
-      caption: "That's the full loop: browse by vibe, check availability, book, and staff manage confirmation, conflicts, and every edge case from their own dashboard.",
+      caption: "That's the full loop, browse by vibe, check availability, and book.",
       action: async () => {
         Demo.highlight(document.querySelector(".confirmation") || document.querySelector(".diner-card"));
         // The confirmation screen shown above is a static view, it

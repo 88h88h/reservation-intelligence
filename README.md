@@ -16,12 +16,11 @@ recording an explanation video, see Demo mode below.
 
 `/`, `/dine`, and `/dine/{id}` each have a "Run Demo" button that drives the
 real UI end to end, real typed text, real button presses, real API calls,
-nothing staged. Captions explain the reasoning and the actual engineering
-behind each moment, not just the click, including things that aren't
-visually happening on screen (the background expiry sweep, per-request
-idempotency keys), not only what's directly visible. The staff demo opens
-with the architecture (stack, 15-minute slot quantization, the agent layer)
-before anything starts happening, covers a happy-path booking, a genuine
+nothing staged. Captions stay short and plain, stating what's happening and
+why it matters in a sentence, not the full engineering justification behind
+it, that depth is meant for a separate talking-head explanation recorded
+after, not narrated live over the mouse. The staff demo opens with a brief
+intro before anything starts happening, covers a happy-path booking, a genuine
 conflict (triggering skill 1 and booking its suggested alternative), an
 under-minimum party size (skill 2), the promo recommendation (skill 3,
 reacting live to whatever it actually decides), the free-text agent panel

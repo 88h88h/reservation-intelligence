@@ -9,7 +9,7 @@
 function buildDineListSteps() {
   return [
     {
-      caption: "Three restaurants, and this is the actual point of the vibe feature: compare real, live occupancy before choosing where to go, not three identical placeholders.",
+      caption: "Three restaurants, each shows its own live occupancy, or 'vibe'. Let's compare them.",
       action: async () => {
         const cards = Array.from(document.querySelectorAll(".restaurant-card"));
         for (const card of cards) {
@@ -23,7 +23,7 @@ function buildDineListSteps() {
         const labels = Array.from(document.querySelectorAll(".restaurant-card")).map(
           (c) => `${c.querySelector(".name")?.textContent}: ${c.querySelector(".vibe-mini")?.textContent}`
         );
-        return `${labels.join(". ")}. Three genuinely different signals, each computed from real reservation data, not three copies of the same number.`;
+        return `${labels.join(". ")}.`;
       },
       action: async () => Demo.highlight(document.querySelector(".restaurant-card")?.closest("main")),
     },
