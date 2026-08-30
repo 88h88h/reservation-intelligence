@@ -10,6 +10,7 @@
 
 let demoCreatedReservationIds = [];
 let demoCreatedOfferId = null;
+let demoLastOfferStatus = null;
 let demoDate = null;
 
 function pickDemoDate() {
@@ -37,22 +38,30 @@ function buildStaffSteps() {
 
   return [
     {
-      caption: "This is the staff operations dashboard, one place for tables, reservations, offers, and the agent, so staff never leave it mid-task.",
+      caption: "This is Reservation Intelligence, a restaurant booking platform with an agentic layer on top. FastAPI backend, SQLite storage, no Docker, kept deliberately simple to run locally. What's worth watching for isn't the CRUD, it's how it handles real concurrency, and where an agent genuinely earns its place instead of being bolted on.",
       action: async () => Demo.highlight(document.querySelector("header.topbar")),
     },
     {
-      caption: "Five tables, each with a real type, capacity, and minimum party size, that's the actual inventory the rest of this demo works against.",
+      caption: "One idea underneath almost everything you're about to see: reservations aren't stored as continuous time ranges, they're quantized into 15-minute slots, and a booking claims a specific set of those slots as its own rows. That turns double-booking prevention from a hard interval-overlap problem into a plain database uniqueness constraint, correctness enforced by the schema, not application code trying to get a race condition right.",
       action: async () => Demo.highlight(document.getElementById("tables-grid").closest(".card")),
     },
     {
-      caption: "Let's set up a normal booking, Table 1, two guests, 7 PM. Behind the scenes, time gets quantized into 15-minute slots, that turns conflict detection into a plain database uniqueness check instead of interval-overlap math. This booking becomes the baseline we'll deliberately collide with next.",
+      caption: "You'll also see a Reservation Operations Agent along the way: three distinct skills, each with its own deliberate autonomy boundary, some only ever suggest, one can act on its own within a pre-approved range, bound together through real LLM tool-calling, not a hardcoded router. More on each as they come up.",
+      action: async () => {},
+    },
+    {
+      caption: "Five tables here, each with a real type, capacity, and minimum party size, the actual inventory the rest of this demo works against.",
+      action: async () => Demo.highlight(document.getElementById("tables-grid").closest(".card")),
+    },
+    {
+      caption: "Let's set up a normal booking, Table 1, two guests, 7 PM, claiming four of those 15-minute slots. This becomes the baseline we'll deliberately collide with next.",
       action: async () => {
         Demo.highlight(document.getElementById("availability-form"));
         await submitAvailabilityForm("19:00", 2);
       },
     },
     {
-      caption: "Table 1 is free, as expected since nothing's booked yet. Booking it now, the exact same request flow a host would use.",
+      caption: "Table 1 is free. Booking it now, invisibly, this request carries a unique idempotency key generated client-side, so a duplicate click or a retried request can never create two reservations. Watch the price too, it's computed live from current occupancy and demand, not a fixed number pulled off the table.",
       action: async () => {
         const row = await Demo.waitFor(() =>
           Demo.findRowByTitleSubstring(document.getElementById("availability-results"), table1Name)
@@ -62,9 +71,16 @@ function buildStaffSteps() {
       },
     },
     {
-      caption: "It's held, not confirmed. Every slot this reservation needs got claimed together in one database transaction, all or nothing, so no one can ever observe a half-booked reservation. Let's confirm it.",
+      caption: "It's held, not confirmed yet, visible right there in the badge. Every slot this reservation needs got claimed together in one database transaction, all or nothing, so no one can ever observe a half-booked reservation. Something invisible is also true right now: if nobody confirms it in time, a background sweep releases it automatically, so a stale hold can never silently block this table forever.",
       action: async () => {
         const row = await Demo.waitFor(() => document.getElementById("reservations-list").querySelector(".row"));
+        Demo.highlight(row);
+      },
+    },
+    {
+      caption: "Let's confirm it.",
+      action: async () => {
+        const row = document.getElementById("reservations-list").querySelector(".row");
         await Demo.clickWithFeedback(row?.querySelector("button.primary"));
         await Demo.sleep(600);
         const table1Id = tablesCache.find((t) => t.name === table1Name)?.id;
@@ -144,8 +160,14 @@ function buildStaffSteps() {
       },
     },
     {
-      caption: "This is the graduated autonomy boundary in action: within the pre-approved discount range it goes live immediately; above it, like this, it waits for a real person. The agent never even sees that ceiling when it proposes a number, so it can't just game staying under it, the boundary is enforced in code afterward.",
+      caption: () =>
+        demoLastOfferStatus === "PENDING_CONFIRMATION"
+          ? "This is the graduated autonomy boundary in action: this discount was above the pre-approved range, so it's sitting here waiting for a real person, badge and all, not gone live on its own."
+          : demoLastOfferStatus === "ACTIVE"
+          ? "This one landed within the pre-approved range, so it went live immediately, no approval step needed, that's the other half of the same graduated boundary."
+          : "No offer was warranted this time, occupancy wasn't low enough to justify one, the threshold check skipped the LLM call entirely rather than paying for a guaranteed no.",
       action: async () => {
+        demoLastOfferStatus = null;
         if (!demoCreatedOfferId) {
           Demo.highlight(document.getElementById("offers-list"));
           return;
@@ -153,14 +175,21 @@ function buildStaffSteps() {
         const offer = await api(`/restaurants/${restaurantId}/offers`).then((offers) =>
           offers.find((o) => o.id === demoCreatedOfferId)
         );
-        if (offer?.status === "PENDING_CONFIRMATION") {
-          const approveBtn = Array.from(document.getElementById("offers-list").querySelectorAll("button")).find(
-            (b) => b.textContent === "Approve"
-          );
-          await Demo.clickWithFeedback(approveBtn);
-        } else {
-          Demo.highlight(document.getElementById("offers-list"));
-        }
+        demoLastOfferStatus = offer?.status || null;
+        Demo.highlight(document.getElementById("offers-list"));
+      },
+    },
+    {
+      caption: () =>
+        demoLastOfferStatus === "PENDING_CONFIRMATION"
+          ? "The agent never even saw that ceiling when it proposed a number, so it couldn't just game staying under it, the boundary is enforced in code afterward. Let's approve it."
+          : "Nothing to approve here, moving on.",
+      action: async () => {
+        if (demoLastOfferStatus !== "PENDING_CONFIRMATION") return;
+        const approveBtn = Array.from(document.getElementById("offers-list").querySelectorAll("button")).find(
+          (b) => b.textContent === "Approve"
+        );
+        await Demo.clickWithFeedback(approveBtn);
       },
     },
     {
@@ -192,16 +221,15 @@ function buildStaffSteps() {
       },
     },
     {
-      caption: "That's the staff side, booking, conflict handling, and three agent skills, each with a real, distinct autonomy boundary. Now, the diner's side.",
+      caption: "That's the staff side, booking, conflict handling, and three agent skills, each with a real, distinct autonomy boundary. Now, the diner's side, starting with browsing restaurants by vibe.",
       action: async () => {
-        const link = document.getElementById("diner-view-link");
-        Demo.highlight(link);
+        Demo.highlight(document.getElementById("diner-view-link"));
         await Demo.sleep(2000);
         // The demo "ending" by moving on is still an ending, clean up
         // whatever it created before leaving, the same as Restart/Close
         // would, rather than only cleaning up on an explicit stop.
         await cleanupDemoData();
-        window.location.href = link.href + "?demo=1";
+        window.location.href = "/dine?demo=1";
       },
     },
   ];

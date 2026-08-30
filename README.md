@@ -14,22 +14,29 @@ recording an explanation video, see Demo mode below.
 
 ## Demo mode
 
-Both `/` and `/dine/{id}` have a "Run Demo" button that drives the real UI
-end to end, real form fills, real button clicks, real API calls, nothing
-staged, with a caption for each step so it's easy to narrate over. The staff
-demo covers a happy-path booking, a genuine conflict (triggering skill 1 and
-booking its suggested alternative), an under-minimum party size (skill 2),
-the promo recommendation (skill 3, reacting live to whatever it actually
-decides), the free-text agent panel routing correctly, and a cancellation,
-then navigates into the diner view, where a matching demo auto-continues
-(browsing by vibe, viewing one restaurant's live occupancy, booking). A
-control panel (pause/next/speed/restart) lets the pace follow your narration
-rather than a fixed timer. Reaching the end, or "Restart"/"Close", all clean
-up everything the run created, reservations cancelled, any offer it
-generated deleted outright (offers have no cancel-equivalent, so a genuine
-delete exists for this, used only by demo cleanup, never by normal offer
-management), so it can be rehearsed as many times as needed before recording
-for real, with no leftover clutter between runs.
+`/`, `/dine`, and `/dine/{id}` each have a "Run Demo" button that drives the
+real UI end to end, real typed text, real button presses, real API calls,
+nothing staged. Captions explain the reasoning and the actual engineering
+behind each moment, not just the click, including things that aren't
+visually happening on screen (the background expiry sweep, per-request
+idempotency keys), not only what's directly visible. The staff demo opens
+with the architecture (stack, 15-minute slot quantization, the agent layer)
+before anything starts happening, covers a happy-path booking, a genuine
+conflict (triggering skill 1 and booking its suggested alternative), an
+under-minimum party size (skill 2), the promo recommendation (skill 3,
+reacting live to whatever it actually decides), the free-text agent panel
+routing correctly, and a cancellation, then navigates into the diner-facing
+side, starting with the restaurant browse list, the actual demonstration of
+comparing real, seeded occupancy differences across restaurants, before
+continuing into one restaurant's page (live occupancy, active offers,
+booking). A control panel (pause/next/speed/restart) lets the pace follow
+your narration rather than a fixed timer. Reaching the end, or
+"Restart"/"Close", all clean up everything the run created, reservations
+cancelled, any offer it generated deleted outright (offers have no
+cancel-equivalent, so a genuine delete exists for this, used only by demo
+cleanup, never by normal offer management), so it can be rehearsed as many
+times as needed before recording for real, with no leftover clutter between
+runs.
 
 ## Requirements
 
@@ -112,8 +119,11 @@ pytest
   restaurant's page, with a real visual occupancy indicator (fill bar plus a
   dot per actual table), not just a percentage in text. `demo-common.js` is
   the shared scripted-walkthrough engine (panel UI, pacing, pause/next/
-  restart); `demo.js` and `dine-demo.js` each define that page's own step
-  list on top of it, see Demo mode above.
+  restart, real typed input, click-press feedback, lazy caption resolution
+  for wording that depends on state not known until a step's own action
+  runs); `demo.js`, `dine-list-demo.js`, and `dine-demo.js` each define that
+  page's own step list on top of it and chain into the next page via a
+  `?demo=1` flag, see Demo mode above.
 
 ## API overview
 

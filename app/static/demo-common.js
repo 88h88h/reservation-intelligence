@@ -150,13 +150,18 @@ const Demo = (() => {
 
   function updatePanel() {
     ensureDemoPanel();
-    const caption = document.getElementById("demo-caption");
+    const captionEl = document.getElementById("demo-caption");
     const count = document.getElementById("demo-step-count");
     if (stepIndex >= steps.length) {
-      caption.textContent = "Demo complete.";
+      captionEl.textContent = "Demo complete.";
       count.textContent = `${steps.length} / ${steps.length}`;
     } else {
-      caption.textContent = steps[stepIndex].caption;
+      // Captions can be a plain string or a function, evaluated fresh
+      // each render, for steps whose wording depends on state that
+      // isn't known until this step's own action has run (e.g. which
+      // branch an LLM decision landed in).
+      const raw = steps[stepIndex].caption;
+      captionEl.textContent = typeof raw === "function" ? raw() : raw;
       count.textContent = `${stepIndex + 1} / ${steps.length}`;
     }
   }
@@ -176,6 +181,9 @@ const Demo = (() => {
     } catch (err) {
       console.error("Demo step failed:", err);
     }
+    // Re-render in case a dynamic caption's underlying state only
+    // became known partway through this step's own action.
+    updatePanel();
   }
 
   async function start(newSteps, resetFn, initialDelayMs) {

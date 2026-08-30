@@ -16,7 +16,7 @@ function pickDinerDemoTime() {
 function buildDinerSteps() {
   return [
     {
-      caption: "Here's the same restaurant from a diner's side. The whole point of this view: let someone judge the atmosphere before committing, not just see a booking form.",
+      caption: "This is the diner-facing side of the same system, a second, deliberately different frontend on the same backend and the same booking guarantees, not a separate product. The whole point of this view: let someone judge the atmosphere before committing, not just see a booking form.",
       action: async () => Demo.highlight(document.querySelector(".vibe-block")),
     },
     {
@@ -73,10 +73,6 @@ function buildDinerSteps() {
   ];
 }
 
-function resolveCaption(step) {
-  return typeof step.caption === "function" ? step.caption() : step.caption;
-}
-
 async function resetDinerDemo() {
   if (dinerDemoCreatedReservationId) {
     try {
@@ -90,8 +86,7 @@ async function resetDinerDemo() {
 }
 
 function startDinerDemo() {
-  const steps = buildDinerSteps().map((s) => ({ ...s, caption: resolveCaption(s) }));
-  Demo.start(steps, resetDinerDemo, 7000);
+  Demo.start(buildDinerSteps(), resetDinerDemo, 7000);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
