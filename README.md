@@ -30,11 +30,15 @@ cp .env.example .env  # then fill in GOOGLE_API_KEY
 uvicorn app.main:app --reload
 ```
 
-Then open `http://localhost:8000` for the dashboard. On startup, the app
-creates the SQLite database (`reservation.db`) if it does not exist yet,
-applies the schema, and seeds it with sample data (one restaurant, a few
-tables, two users, a couple of menu items) so there is something real to work
-against immediately.
+Then open `http://localhost:8000` for the staff dashboard (scoped to "The
+Rosemary"), or `http://localhost:8000/dine` for the diner-facing view, a
+browse list across all seeded restaurants, each showing its live vibe, click
+through to `/dine/{id}` to see one restaurant's occupancy in detail and book.
+Also linked from the staff dashboard's header. On startup, the app creates
+the SQLite database (`reservation.db`) if it does not exist yet, applies the
+schema, and seeds it with sample data, three restaurants (so the diner browse
+view has something real to compare), a handful of tables and menu items each,
+and two users, so there is something real to work against immediately.
 
 ## Running the tests
 
@@ -68,18 +72,25 @@ pytest
   expired holds on a fixed interval, so a reservation's stored status stays
   accurate without depending on something else happening to read or contend
   for it, and serves the dashboard.
-- `app/static/`: the dashboard, plain HTML/CSS/vanilla JS, no build step. The
-  agent isn't a separate playground bolted onto the page, it surfaces in
-  context: skill 1 appears inline when a booking attempt just failed, skill 2
-  appears inline next to a table flagged below its minimum party size, skill
-  3 has a direct "recommend a promo" action in the offers section, and a
-  free-text panel demonstrates the Reservation Operations Agent's actual
-  routing behavior directly.
+- `app/static/`: two separate frontends, plain HTML/CSS/vanilla JS, no build
+  step. `index.html`/`app.js` is the staff dashboard, dense, wide, an ops
+  tool; the agent surfaces in context rather than as a separate playground:
+  skill 1 appears inline when a booking attempt just failed, skill 2 appears
+  inline next to a table flagged below its minimum party size, skill 3 has a
+  direct "recommend a promo" action in the offers section, and a free-text
+  panel demonstrates the Reservation Operations Agent's actual routing
+  behavior directly. `dine-list.html`/`dine.html` are the diner-facing pages,
+  a warmer, single-column, "restaurant site" feel, deliberately distinct from
+  the staff view: browse restaurants by their live vibe, then book on one
+  restaurant's page, with a real visual occupancy indicator (fill bar plus a
+  dot per actual table), not just a percentage in text.
 
 ## API overview
 
-- `GET /restaurants`, `GET /restaurants/{id}/tables`,
-  `GET /restaurants/{id}/availability`: browsing.
+- `GET /restaurants`, `GET /restaurants/{id}`, `GET /restaurants/{id}/tables`,
+  `GET /restaurants/{id}/availability`, `GET /restaurants/{id}/occupancy`
+  (occupied/total table counts, ratio, and a diner-facing vibe label),
+  `GET /users`: browsing.
 - `POST /reservations`, `GET /reservations/{id}`,
   `POST /reservations/{id}/confirm`, `POST /reservations/{id}/cancel`: booking
   lifecycle.

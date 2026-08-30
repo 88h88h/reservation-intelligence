@@ -46,9 +46,13 @@ async function init() {
   const restaurant = restaurants[0];
   restaurantId = restaurant.id;
   document.getElementById("restaurant-name").textContent = restaurant.name;
+  document.getElementById("brand-mark").textContent = restaurant.name.charAt(0).toUpperCase();
+  document.getElementById("diner-view-link").href = `/dine/${restaurant.id}`;
 
   const now = new Date();
   document.getElementById("res-date").value = now.toISOString().slice(0, 10);
+
+  document.getElementById("recommend-offer-btn").onclick = askForOfferRecommendation;
 
   await Promise.all([loadOccupancy(), loadTables(), loadReservations(), loadMenuItems(), loadOffers()]);
 }
@@ -57,7 +61,12 @@ async function init() {
 
 async function loadOccupancy() {
   const occ = await api(`/restaurants/${restaurantId}/occupancy`);
-  document.getElementById("occupancy-label").textContent = `Occupancy: ${Math.round(occ.occupancy_ratio * 100)}%`;
+  const pct = Math.round(occ.occupancy_ratio * 100);
+  const pill = document.getElementById("occupancy-pill");
+  pill.classList.remove("mid", "high");
+  if (occ.occupancy_ratio > 0.7) pill.classList.add("high");
+  else if (occ.occupancy_ratio > 0.4) pill.classList.add("mid");
+  document.getElementById("occupancy-label").textContent = `Occupancy: ${pct}%`;
 }
 
 // ---------- tables ----------
@@ -70,9 +79,10 @@ async function loadTables() {
   tablesCache.forEach((t) => {
     grid.appendChild(
       el(`
-      <div class="table-chip">
+      <div class="table-chip${t.is_bookable ? "" : " closed"}">
         <div class="name">${t.name}</div>
-        <div class="meta">${t.type || "standard"} &middot; seats ${t.capacity} &middot; min ${t.min_party_size}</div>
+        <span class="type-tag">${t.type || "standard"}</span>
+        <div class="meta">seats ${t.capacity} &middot; min ${t.min_party_size}</div>
         <div class="meta">${fmtMoney(t.base_price)} base${t.is_bookable ? "" : " &middot; closed"}</div>
       </div>
     `)
@@ -167,7 +177,7 @@ function renderAvailability(tables, request) {
     const row = el(`
       <div class="row">
         <div class="main">
-          <div class="title">${t.name} &middot; ${t.type || "standard"}</div>
+          <div class="title">${t.name} <span class="type-tag">${t.type || "standard"}</span></div>
           <div class="subtitle">seats ${t.capacity} &middot; min ${t.min_party_size} &middot; ${fmtMoney(t.base_price)} base</div>
         </div>
         <div class="actions"></div>
@@ -316,22 +326,10 @@ async function loadMenuItems() {
     opt.textContent = m.name;
     select.appendChild(opt);
   });
-
-  if (!document.getElementById("recommend-offer-btn")) {
-    const askOfferBtn = el(
-      `<button id="recommend-offer-btn" class="agent" style="margin-top:0.6rem;">Ask agent for a promo recommendation</button>`
-    );
-    askOfferBtn.onclick = askForOfferRecommendation;
-    list.after(askOfferBtn);
-  }
 }
 
 async function askForOfferRecommendation() {
-  let outcome = document.getElementById("offer-recommendation-outcome");
-  if (!outcome) {
-    outcome = el(`<div id="offer-recommendation-outcome" class="callout suggest"></div>`);
-    document.getElementById("manual-offer-form").after(outcome);
-  }
+  const outcome = document.getElementById("offer-recommendation-outcome");
   setReasoning(outcome, "callout suggest", "Asking the agent…");
   try {
     const result = await api(`/agent/recommend-offer?restaurant_id=${restaurantId}`, { method: "POST" });

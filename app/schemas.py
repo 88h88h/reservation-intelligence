@@ -136,6 +136,19 @@ class AgentHandleRequest(BaseModel):
 class OccupancyResponse(BaseModel):
     restaurant_id: int
     occupancy_ratio: float
+    vibe_label: str
+    occupied_tables: int
+    total_tables: int
+
+
+class UserResponse(BaseModel):
+    id: int
+    name: str
+    contact: str | None
+
+    @classmethod
+    def from_row(cls, row) -> "UserResponse":
+        return cls(**dict(row))
 
 
 class AgentHandleResponse(BaseModel):

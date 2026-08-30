@@ -10,7 +10,7 @@ from app.schemas import (
     TableResponse,
 )
 from app.services.availability_service import find_available_tables
-from app.services.occupancy_service import current_occupancy_ratio
+from app.services.occupancy_service import current_occupancy_detail
 
 router = APIRouter(prefix="/restaurants", tags=["restaurants"])
 
@@ -21,6 +21,18 @@ def list_restaurants():
     try:
         rows = restaurant_repo.list_all(conn)
         return [RestaurantResponse.from_row(row) for row in rows]
+    finally:
+        conn.close()
+
+
+@router.get("/{restaurant_id}", response_model=RestaurantResponse)
+def get_restaurant(restaurant_id: int):
+    conn = get_connection()
+    try:
+        restaurant = restaurant_repo.get_by_id(conn, restaurant_id)
+        if restaurant is None:
+            raise HTTPException(status_code=404, detail="restaurant not found")
+        return RestaurantResponse.from_row(restaurant)
     finally:
         conn.close()
 
@@ -74,8 +86,8 @@ def get_occupancy(restaurant_id: int):
     try:
         if restaurant_repo.get_by_id(conn, restaurant_id) is None:
             raise HTTPException(status_code=404, detail="restaurant not found")
-        ratio = current_occupancy_ratio(conn, restaurant_id)
-        return OccupancyResponse(restaurant_id=restaurant_id, occupancy_ratio=ratio)
+        detail = current_occupancy_detail(conn, restaurant_id)
+        return OccupancyResponse(restaurant_id=restaurant_id, **detail)
     finally:
         conn.close()
 

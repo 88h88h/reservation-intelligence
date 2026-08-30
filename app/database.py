@@ -123,10 +123,57 @@ def init_db() -> None:
         conn.close()
 
 
+_SEED_RESTAURANTS = [
+    {
+        "name": "The Rosemary",
+        "tables": [
+            ("Table 1", 2, "window", 1, 40.00),
+            ("Table 2", 4, "standard", 2, 60.00),
+            ("Table 3", 4, "standard", 2, 60.00),
+            ("Table 4", 6, "patio", 4, 90.00),
+            ("Table 5", 2, "chef's counter", 1, 55.00),
+        ],
+        "menu_items": [
+            ("Tiramisu", 9.00, 3.00),
+            ("House Cocktail", 12.00, 4.00),
+        ],
+    },
+    {
+        "name": "Blue Anchor",
+        "tables": [
+            ("Table 1", 2, "patio", 1, 45.00),
+            ("Table 2", 4, "patio", 2, 65.00),
+            ("Table 3", 4, "standard", 2, 55.00),
+            ("Table 4", 8, "patio", 5, 110.00),
+        ],
+        "menu_items": [
+            ("Grilled Oysters", 14.00, 4.00),
+            ("Citrus Spritz", 11.00, 3.00),
+        ],
+    },
+    {
+        "name": "Nomad Kitchen",
+        "tables": [
+            ("Table 1", 2, "chef's counter", 1, 50.00),
+            ("Table 2", 2, "standard", 1, 45.00),
+            ("Table 3", 6, "standard", 3, 85.00),
+            ("Table 4", 4, "window", 2, 65.00),
+        ],
+        "menu_items": [
+            ("Charcuterie Board", 16.00, 5.00),
+            ("Old Fashioned", 13.00, 3.00),
+        ],
+    },
+]
+
+
 def seed_if_empty() -> None:
     """Sample data so the dashboard and agent skills have something real
     to operate on, standing in for a registration/onboarding flow that's
-    out of scope for this project.
+    out of scope for this project. Three restaurants, not one, so the
+    diner-facing browse view has something real to compare, "which one
+    has a good vibe right now" only means something with more than one
+    option on the page.
     """
     conn = get_connection()
     try:
@@ -135,37 +182,27 @@ def seed_if_empty() -> None:
             return
 
         with transaction(conn):
-            conn.execute("INSERT INTO restaurant (name) VALUES (?)", ("The Rosemary",))
-            restaurant_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-
             users = [("Alice Chen", "alice@example.com"), ("Bob Martinez", "bob@example.com")]
             conn.executemany("INSERT INTO user (name, contact) VALUES (?, ?)", users)
 
-            tables = [
-                (restaurant_id, "Table 1", 2, "window", 1, 40.00),
-                (restaurant_id, "Table 2", 4, "standard", 2, 60.00),
-                (restaurant_id, "Table 3", 4, "standard", 2, 60.00),
-                (restaurant_id, "Table 4", 6, "patio", 4, 90.00),
-                (restaurant_id, "Table 5", 2, "chef's counter", 1, 55.00),
-            ]
-            conn.executemany(
-                """
-                INSERT INTO dining_table (restaurant_id, name, capacity, type, min_party_size, base_price)
-                VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                tables,
-            )
+            for restaurant in _SEED_RESTAURANTS:
+                conn.execute("INSERT INTO restaurant (name) VALUES (?)", (restaurant["name"],))
+                restaurant_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
 
-            menu_items = [
-                (restaurant_id, "Tiramisu", 9.00, 3.00),
-                (restaurant_id, "House Cocktail", 12.00, 4.00),
-            ]
-            conn.executemany(
-                """
-                INSERT INTO menu_item (restaurant_id, name, price, max_auto_discount)
-                VALUES (?, ?, ?, ?)
-                """,
-                menu_items,
-            )
+                conn.executemany(
+                    """
+                    INSERT INTO dining_table (restaurant_id, name, capacity, type, min_party_size, base_price)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    [(restaurant_id, *t) for t in restaurant["tables"]],
+                )
+
+                conn.executemany(
+                    """
+                    INSERT INTO menu_item (restaurant_id, name, price, max_auto_discount)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    [(restaurant_id, *m) for m in restaurant["menu_items"]],
+                )
     finally:
         conn.close()

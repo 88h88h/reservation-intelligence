@@ -53,8 +53,8 @@ def test_seed_if_empty_populates_sample_data(test_db):
     (table_count,) = conn.execute("SELECT COUNT(*) FROM dining_table").fetchone()
     (user_count,) = conn.execute("SELECT COUNT(*) FROM user").fetchone()
     conn.close()
-    assert restaurant_count == 1
-    assert table_count == 5
+    assert restaurant_count == len(db._SEED_RESTAURANTS)
+    assert table_count == sum(len(r["tables"]) for r in db._SEED_RESTAURANTS)
     assert user_count == 2
 
 
@@ -64,7 +64,7 @@ def test_seed_if_empty_is_idempotent(test_db):
     conn = db.get_connection()
     (restaurant_count,) = conn.execute("SELECT COUNT(*) FROM restaurant").fetchone()
     conn.close()
-    assert restaurant_count == 1
+    assert restaurant_count == len(db._SEED_RESTAURANTS)
 
 
 def test_foreign_keys_are_enforced(test_db):

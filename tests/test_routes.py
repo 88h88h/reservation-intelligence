@@ -22,8 +22,20 @@ def test_list_restaurants_returns_seeded_data(client):
     response = client.get("/restaurants")
     assert response.status_code == 200
     restaurants = response.json()
-    assert len(restaurants) == 1
+    assert len(restaurants) == 3
     assert restaurants[0]["name"] == "The Rosemary"
+
+
+def test_get_single_restaurant(client):
+    restaurant_id, _ = _seeded_ids(client)
+    response = client.get(f"/restaurants/{restaurant_id}")
+    assert response.status_code == 200
+    assert response.json()["name"] == "The Rosemary"
+
+
+def test_get_single_restaurant_unknown_is_404(client):
+    response = client.get("/restaurants/999")
+    assert response.status_code == 404
 
 
 def test_list_tables_for_unknown_restaurant_is_404(client):
@@ -32,10 +44,21 @@ def test_list_tables_for_unknown_restaurant_is_404(client):
 
 
 def test_occupancy_is_zero_with_no_confirmed_reservations(client):
-    restaurant_id, _ = _seeded_ids(client)
+    restaurant_id, tables = _seeded_ids(client)
     response = client.get(f"/restaurants/{restaurant_id}/occupancy")
     assert response.status_code == 200
-    assert response.json()["occupancy_ratio"] == 0.0
+    body = response.json()
+    assert body["occupancy_ratio"] == 0.0
+    assert body["vibe_label"] == "Quiet"
+    assert body["occupied_tables"] == 0
+    assert body["total_tables"] == len(tables)
+
+
+def test_list_users_returns_seeded_data(client):
+    response = client.get("/users")
+    assert response.status_code == 200
+    names = {u["name"] for u in response.json()}
+    assert names == {"Alice Chen", "Bob Martinez"}
 
 
 def test_occupancy_for_unknown_restaurant_is_404(client):

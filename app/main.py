@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.database import init_db, seed_if_empty
-from app.routers import agent, offers, reservations, restaurants
+from app.routers import agent, offers, reservations, restaurants, users
 from app.services.reservation_service import release_expired_reservations
 
 SWEEP_INTERVAL_SECONDS = 30
@@ -40,6 +40,7 @@ app.include_router(reservations.router)
 app.include_router(restaurants.router)
 app.include_router(agent.router)
 app.include_router(offers.router)
+app.include_router(users.router)
 
 _STATIC_DIR = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
@@ -48,6 +49,16 @@ app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
 @app.get("/")
 def dashboard() -> FileResponse:
     return FileResponse(_STATIC_DIR / "index.html")
+
+
+@app.get("/dine")
+def diner_list_view() -> FileResponse:
+    return FileResponse(_STATIC_DIR / "dine-list.html")
+
+
+@app.get("/dine/{restaurant_id}")
+def diner_restaurant_view(restaurant_id: int) -> FileResponse:
+    return FileResponse(_STATIC_DIR / "dine.html")
 
 
 @app.exception_handler(sqlite3.IntegrityError)
