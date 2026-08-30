@@ -44,6 +44,59 @@ const Demo = (() => {
     );
   }
 
+  /**
+   * Visibly types text into a field, character by character, rather
+   * than snapping the value in instantly, for text/number inputs
+   * where that's genuinely possible. Native date/time/select controls
+   * can't be simulated this way, no script API opens or visibly
+   * drives their picker UI, so those still get set directly.
+   */
+  async function typeInto(input, text, charDelayMs = 45) {
+    if (!input) return;
+    input.focus();
+    input.value = "";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    for (const ch of String(text)) {
+      input.value += ch;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      await sleep(charDelayMs);
+    }
+    await sleep(200);
+  }
+
+  /** A brief visible "press" before the click actually fires. */
+  async function clickWithFeedback(button) {
+    if (!button) return;
+    highlight(button);
+    button.classList.add("demo-pressed");
+    await sleep(160);
+    button.classList.remove("demo-pressed");
+    button.click();
+  }
+
+  /**
+   * For native date/time/select controls, which can't be visibly
+   * "typed into" or opened the way a real picker can, script can only
+   * ever set .value directly, so the field gets its own pause and
+   * flash instead: focus it, hold a beat so the viewer's eye actually
+   * lands there before anything changes, then set the value and flash
+   * it to confirm the change registered, rather than the value just
+   * silently appearing mid-sequence with no visible acknowledgment.
+   */
+  async function setFieldWithEmphasis(input, value) {
+    if (!input) return;
+    input.scrollIntoView({ behavior: "smooth", block: "center" });
+    input.classList.add("demo-field-focus");
+    await sleep(500);
+    input.value = value;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    input.classList.remove("demo-field-focus");
+    input.classList.add("demo-field-flash");
+    await sleep(500);
+    input.classList.remove("demo-field-flash");
+  }
+
   function ensureDemoPanel() {
     if (document.getElementById("demo-panel")) return;
     const panel = document.createElement("div");
@@ -174,5 +227,15 @@ const Demo = (() => {
     updatePanel();
   }
 
-  return { start, stop, sleep, waitFor, highlight, findRowByTitleSubstring };
+  return {
+    start,
+    stop,
+    sleep,
+    waitFor,
+    highlight,
+    findRowByTitleSubstring,
+    typeInto,
+    clickWithFeedback,
+    setFieldWithEmphasis,
+  };
 })();

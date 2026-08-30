@@ -1,8 +1,11 @@
 /**
  * Staff-dashboard walkthrough for the explanation video. Drives the
- * real UI, real form fills, real button clicks, real API calls, so
- * what's on screen is genuinely happening, not staged. Ends by
- * navigating into the diner view, where a matching demo auto-continues.
+ * real UI, real typed text, real button presses, real API calls, so
+ * what's on screen is genuinely happening, not staged. Captions are
+ * written to explain the reasoning behind each scenario, not just
+ * narrate the click, so a viewer understands what's being tested and
+ * why, not just that something happened. Ends by navigating into the
+ * diner view, where a matching demo auto-continues.
  */
 
 let demoCreatedReservationIds = [];
@@ -15,15 +18,16 @@ function pickDemoDate() {
   return d.toISOString().slice(0, 10);
 }
 
-function setInputValue(id, value) {
-  document.getElementById(id).value = value;
+async function fillAvailabilityForm(time, party) {
+  await Demo.setFieldWithEmphasis(document.getElementById("res-date"), demoDate);
+  await Demo.setFieldWithEmphasis(document.getElementById("res-time"), time);
+  await Demo.typeInto(document.getElementById("res-party"), String(party));
 }
 
 async function submitAvailabilityForm(time, party) {
-  setInputValue("res-date", demoDate);
-  setInputValue("res-time", time);
-  setInputValue("res-party", party);
-  document.getElementById("availability-form").dispatchEvent(new Event("submit", { cancelable: true }));
+  await fillAvailabilityForm(time, party);
+  const submitBtn = document.querySelector("#availability-form button[type=submit]");
+  await Demo.clickWithFeedback(submitBtn);
   await Demo.waitFor(() => document.getElementById("availability-results").children.length > 0);
 }
 
@@ -33,37 +37,35 @@ function buildStaffSteps() {
 
   return [
     {
-      caption: "This is the staff operations dashboard, tables, reservations, offers, and the agent, all in one place.",
+      caption: "This is the staff operations dashboard, one place for tables, reservations, offers, and the agent, so staff never leave it mid-task.",
       action: async () => Demo.highlight(document.querySelector("header.topbar")),
     },
     {
-      caption: "Five tables, each with its own type, capacity, and minimum party size.",
+      caption: "Five tables, each with a real type, capacity, and minimum party size, that's the actual inventory the rest of this demo works against.",
       action: async () => Demo.highlight(document.getElementById("tables-grid").closest(".card")),
     },
     {
-      caption: "Let's book Table 1, a window table, for two guests at 7 PM.",
+      caption: "Let's set up a normal booking, Table 1, two guests, 7 PM. Behind the scenes, time gets quantized into 15-minute slots, that turns conflict detection into a plain database uniqueness check instead of interval-overlap math. This booking becomes the baseline we'll deliberately collide with next.",
       action: async () => {
         Demo.highlight(document.getElementById("availability-form"));
         await submitAvailabilityForm("19:00", 2);
       },
     },
     {
-      caption: "Table 1 is free. Booking it now, the same request flow a host would use.",
+      caption: "Table 1 is free, as expected since nothing's booked yet. Booking it now, the exact same request flow a host would use.",
       action: async () => {
         const row = await Demo.waitFor(() =>
           Demo.findRowByTitleSubstring(document.getElementById("availability-results"), table1Name)
         );
-        Demo.highlight(row);
-        row.querySelector("button.primary").click();
+        await Demo.clickWithFeedback(row?.querySelector("button.primary"));
         await Demo.waitFor(() => document.getElementById("booking-outcome").textContent.includes("Booked as HELD"));
       },
     },
     {
-      caption: "It's held, not confirmed yet, that's the atomic slot claim working. Let's confirm it.",
+      caption: "It's held, not confirmed. Every slot this reservation needs got claimed together in one database transaction, all or nothing, so no one can ever observe a half-booked reservation. Let's confirm it.",
       action: async () => {
         const row = await Demo.waitFor(() => document.getElementById("reservations-list").querySelector(".row"));
-        Demo.highlight(row);
-        row.querySelector("button.primary").click();
+        await Demo.clickWithFeedback(row?.querySelector("button.primary"));
         await Demo.sleep(600);
         const table1Id = tablesCache.find((t) => t.name === table1Name)?.id;
         const reservations = await api(`/restaurants/${restaurantId}/reservations`);
@@ -72,7 +74,7 @@ function buildStaffSteps() {
       },
     },
     {
-      caption: "Now imagine a second request comes in for that exact same table and time, a genuine double-booking attempt.",
+      caption: "Now the real test: a second request for that exact same table and time, the classic check-then-act race condition. Triggered directly here since the normal search would already filter this table out for being taken, which is itself part of the point, the guarantee holds even if something bypasses the UI.",
       action: async () => {
         Demo.highlight(document.getElementById("booking-outcome"));
         const table1Id = tablesCache.find((t) => t.name === table1Name)?.id;
@@ -81,16 +83,15 @@ function buildStaffSteps() {
       },
     },
     {
-      caption: "The database rejects it outright, no double-booking is possible. Staff can ask the agent for an alternative.",
+      caption: "Rejected outright, a UNIQUE constraint on the slot table does this, not application code checking and then writing in two separate steps, that gap is exactly where races like this usually slip through. This is where the agent adds value: suggesting a fix, not just failing.",
       action: async () => {
         const btn = document.getElementById("booking-outcome").querySelector("button.agent");
-        Demo.highlight(btn);
-        btn.click();
+        await Demo.clickWithFeedback(btn);
         await Demo.waitFor(() => document.getElementById("booking-outcome").querySelector(".callout.agent-result, .callout.error"));
       },
     },
     {
-      caption: "It found the best alternative for this exact request, weighing table type, timing, and capacity. Let's book it.",
+      caption: "It reasoned through table type, timing, then capacity, in that priority order, a real LLM call over data we already computed, not the model guessing at availability itself. Let's accept its suggestion.",
       action: async () => {
         const btn = await Demo.waitFor(() =>
           Array.from(document.getElementById("booking-outcome").querySelectorAll("button")).find((b) =>
@@ -98,8 +99,7 @@ function buildStaffSteps() {
           )
         );
         if (!btn) return;
-        Demo.highlight(btn);
-        btn.click();
+        await Demo.clickWithFeedback(btn);
         await Demo.waitFor(() => document.getElementById("booking-outcome").textContent.includes("Booked as HELD"));
         const reservations = await api(`/restaurants/${restaurantId}/reservations`);
         const latest = reservations[0];
@@ -107,14 +107,14 @@ function buildStaffSteps() {
       },
     },
     {
-      caption: "Now something different, a smaller party wanting the patio table, which normally needs at least four people.",
+      caption: "A different edge case now: what happens when a party doesn't meet a table's minimum size? Does the system just block them and lose the booking outright?",
       action: async () => {
         Demo.highlight(document.getElementById("availability-form"));
         await submitAvailabilityForm("20:00", 2);
       },
     },
     {
-      caption: "Table 4 still shows up, but flagged below its usual minimum. Let's ask the agent whether it's worth seating them there anyway.",
+      caption: "Table 4 still shows up, just flagged, minimum party size is a soft preference, never a hard block in the core booking API. That's a deliberate architectural choice, not a missing validation. Let's ask the agent whether it's worth seating them here anyway.",
       action: async () => {
         const row = await Demo.waitFor(() =>
           Demo.findRowByTitleSubstring(document.getElementById("availability-results"), table4Name)
@@ -122,26 +122,29 @@ function buildStaffSteps() {
         const notice = row?.nextElementSibling?.classList.contains("callout") ? row.nextElementSibling : null;
         const btn = notice?.querySelector("button");
         if (!btn) return;
-        Demo.highlight(notice);
-        btn.click();
+        await Demo.clickWithFeedback(btn);
         await Demo.waitFor(() => notice.className.includes("agent-result") || notice.className.includes("error"));
       },
     },
     {
-      caption: "The agent weighs real signals here, current demand, how idle that table's been today, proximity to closing, before recommending.",
+      caption: "It weighs real signals here, current demand, how idle this table's been today, how close to closing, before recommending, not a fixed threshold. This is the kind of context-dependent judgment call that doesn't reduce cleanly to an if-statement, which is exactly why it's the agent's job, not hardcoded logic.",
       action: async () => {},
     },
     {
-      caption: "Let's check whether now is a good moment to run a promotional offer.",
+      caption: "One more decision point: is now a good moment for a promotional offer? This reuses the exact same occupancy signal that drives the diner-facing vibe display and dynamic pricing, one computed value, three uses, not three separate systems. Below a threshold, it skips the LLM call entirely rather than paying for a guaranteed no.",
       action: async () => {
-        Demo.highlight(document.getElementById("recommend-offer-btn"));
+        const btn = document.getElementById("recommend-offer-btn");
+        Demo.highlight(btn);
+        btn.classList.add("demo-pressed");
+        await Demo.sleep(160);
+        btn.classList.remove("demo-pressed");
         const result = await askForOfferRecommendation();
         if (result?.offer_id) demoCreatedOfferId = result.offer_id;
         await Demo.sleep(500);
       },
     },
     {
-      caption: "Watch the outcome, if the discount is within the pre-approved range it goes live immediately; above it, it waits for a human.",
+      caption: "This is the graduated autonomy boundary in action: within the pre-approved discount range it goes live immediately; above it, like this, it waits for a real person. The agent never even sees that ceiling when it proposes a number, so it can't just game staying under it, the boundary is enforced in code afterward.",
       action: async () => {
         if (!demoCreatedOfferId) {
           Demo.highlight(document.getElementById("offers-list"));
@@ -154,38 +157,37 @@ function buildStaffSteps() {
           const approveBtn = Array.from(document.getElementById("offers-list").querySelectorAll("button")).find(
             (b) => b.textContent === "Approve"
           );
-          if (approveBtn) {
-            Demo.highlight(approveBtn.closest(".row"));
-            approveBtn.click();
-          }
+          await Demo.clickWithFeedback(approveBtn);
         } else {
           Demo.highlight(document.getElementById("offers-list"));
         }
       },
     },
     {
-      caption: "Finally, let's talk to the agent directly in plain language and watch it decide which tool applies on its own.",
+      caption: "Finally, the actual Reservation Operations Agent: real LLM tool-calling, both skills bound as callable tools, the model reads a plain description and decides which one applies itself, not a hardcoded if-else router matching keywords.",
       action: async () => {
         Demo.highlight(document.getElementById("agent-form"));
-        document.getElementById("agent-situation").value =
-          "A party of 2 wants a table that normally needs 4 people minimum, would that be okay right now?";
-        document.getElementById("agent-form").dispatchEvent(new Event("submit", { cancelable: true }));
+        await Demo.typeInto(
+          document.getElementById("agent-situation"),
+          "A party of 2 wants a table that normally needs 4 people minimum, would that be okay right now?"
+        );
+        const submitBtn = document.querySelector("#agent-form button[type=submit]");
+        await Demo.clickWithFeedback(submitBtn);
         await Demo.waitFor(() => document.getElementById("agent-result").textContent.includes(":"));
       },
     },
     {
-      caption: "It correctly identified this as the minimum-party-size question, and reused the exact same skill, no separate code path.",
+      caption: "It correctly routed this to the minimum-party-size skill, the same one triggered manually a moment ago, proving it's real routing, not a special case.",
       action: async () => Demo.highlight(document.getElementById("agent-result")),
     },
     {
-      caption: "And staff can cancel anytime, freeing the table back up instantly.",
+      caption: "And staff keep full control throughout, cancelling reuses the same transactional release logic as everything else here, delete the slot claims and update the status together, atomically, so the table is genuinely free again, not just marked as if it were.",
       action: async () => {
         const rows = Array.from(document.getElementById("reservations-list").querySelectorAll(".row"));
         const confirmedRow = rows.find((r) => r.querySelector(".badge")?.textContent === "CONFIRMED");
         if (!confirmedRow) return;
-        Demo.highlight(confirmedRow);
         const cancelBtn = Array.from(confirmedRow.querySelectorAll("button")).find((b) => b.textContent === "Cancel");
-        cancelBtn?.click();
+        await Demo.clickWithFeedback(cancelBtn);
         await Demo.sleep(600);
       },
     },

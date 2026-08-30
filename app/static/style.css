@@ -852,3 +852,31 @@ body.diner {
 .demo-controls button:hover {
   background: rgba(255, 255, 255, 0.22);
 }
+
+/* Visible "someone just clicked this" feedback for demo mode. */
+.demo-pressed {
+  transform: scale(0.96);
+  filter: brightness(0.92);
+  transition: transform 0.1s ease, filter 0.1s ease;
+}
+
+/* Visible "this field is about to change" / "this field just
+   changed" feedback for native date/time/select controls, which
+   can't be visibly typed into or opened the way a real picker can. */
+.demo-field-focus {
+  outline: 3px solid var(--accent);
+  outline-offset: 1px;
+}
+
+@keyframes demo-field-flash-anim {
+  0% {
+    background: var(--accent-soft);
+  }
+  100% {
+    background: var(--bg);
+  }
+}
+
+.demo-field-flash {
+  animation: demo-field-flash-anim 0.5s ease-out;
+}
