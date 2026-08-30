@@ -11,6 +11,7 @@
 let demoCreatedReservationIds = [];
 let demoCreatedOfferId = null;
 let demoLastOfferStatus = null;
+let demoAltBookingInfo = null;
 let demoDate = null;
 
 function pickDemoDate() {
@@ -61,7 +62,7 @@ function buildStaffSteps() {
       },
     },
     {
-      caption: "Table 1 is free for this date and time specifically, other bookings for it may already exist on other dates, and each row below shows exactly which, so that's checkable, not just asserted. Booking it now, invisibly, this request carries a unique idempotency key generated client-side, so a duplicate click or a retried request can never create two reservations. Watch the price too, it's computed live from current occupancy and demand, not a fixed number pulled off the table.",
+      caption: "Table 1 is free for this date and time specifically, other bookings for it may already exist on other dates, and each row below shows exactly which, so that's checkable, not just asserted. Booking it now, invisibly, this request carries a unique idempotency key generated client-side, so a duplicate click or a retried request can never create two reservations. The price here is genuinely computed, not fixed, it just has no demand to react to yet, since nothing else is booked for this date. Watch it change in a moment once that's no longer true.",
       action: async () => {
         const row = await Demo.waitFor(() =>
           Demo.findRowByTitleSubstring(document.getElementById("availability-results"), table1Name)
@@ -107,7 +108,15 @@ function buildStaffSteps() {
       },
     },
     {
-      caption: "It reasoned through table type, timing, then capacity, in that priority order, a real LLM call over data we already computed, not the model guessing at availability itself. Let's accept its suggestion.",
+      caption: () => {
+        if (!demoAltBookingInfo) {
+          return "It reasoned through table type, timing, then capacity, in that priority order, a real LLM call over data we already computed, not the model guessing at availability itself. Let's accept its suggestion.";
+        }
+        const { tableName, basePrice, actualPrice } = demoAltBookingInfo;
+        return actualPrice > basePrice
+          ? `Booked ${tableName} at $${actualPrice.toFixed(2)}, above its $${basePrice.toFixed(2)} base price. That's the pricing engine reacting to real demand, Table 1's confirmed booking already claims part of this same 7 PM slot, computed, not staged.`
+          : `Booked ${tableName} at its base price, $${actualPrice.toFixed(2)}, still not enough competing demand at this exact slot to move it yet.`;
+      },
       action: async () => {
         const btn = await Demo.waitFor(() =>
           Array.from(document.getElementById("booking-outcome").querySelectorAll("button")).find((b) =>
@@ -119,7 +128,11 @@ function buildStaffSteps() {
         await Demo.waitFor(() => document.getElementById("booking-outcome").textContent.includes("Booked as HELD"));
         const reservations = await api(`/restaurants/${restaurantId}/reservations`);
         const latest = reservations[0];
-        if (latest) demoCreatedReservationIds.push(latest.id);
+        if (latest) {
+          demoCreatedReservationIds.push(latest.id);
+          const table = tablesCache.find((t) => t.id === latest.table_id);
+          demoAltBookingInfo = { tableName: table?.name || `Table ${latest.table_id}`, basePrice: table?.base_price ?? 0, actualPrice: latest.price };
+        }
       },
     },
     {
@@ -143,11 +156,11 @@ function buildStaffSteps() {
       },
     },
     {
-      caption: "It weighs real signals here, current demand, how idle this table's been today, how close to closing, before recommending, not a fixed threshold. This is the kind of context-dependent judgment call that doesn't reduce cleanly to an if-statement, which is exactly why it's the agent's job, not hardcoded logic.",
+      caption: "It weighs real signals here, occupancy and demand for this specific date and time, not the restaurant's occupancy right now, that's deliberate, worth noticing if its number looks different from the badge up top, they're answering different questions on purpose. Plus how idle this table's been today, how close to closing. This is the kind of context-dependent judgment call that doesn't reduce cleanly to an if-statement, which is exactly why it's the agent's job, not hardcoded logic.",
       action: async () => {},
     },
     {
-      caption: "One more decision point: is now a good moment for a promotional offer? This reuses the exact same occupancy signal that drives the diner-facing vibe display and dynamic pricing, one computed value, three uses, not three separate systems. Below a threshold, it skips the LLM call entirely rather than paying for a guaranteed no.",
+      caption: "One more decision point: is now a good moment for a promotional offer? This reuses the same real-time occupancy signal that drives the diner-facing vibe display, how full the restaurant is right now, today, deliberately different from the per-slot signal pricing and the last skill used, a promo decision is genuinely about filling empty seats right now, not about one future booking. Below a threshold, it skips the LLM call entirely rather than paying for a guaranteed no.",
       action: async () => {
         const btn = document.getElementById("recommend-offer-btn");
         Demo.highlight(btn);
@@ -268,6 +281,7 @@ document.addEventListener("DOMContentLoaded", () => {
       demoDate = pickDemoDate();
       demoCreatedReservationIds = [];
       demoCreatedOfferId = null;
+      demoAltBookingInfo = null;
       Demo.start(buildStaffSteps(), resetStaffDemo, 7000);
     };
   }
