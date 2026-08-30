@@ -51,6 +51,10 @@ function buildStaffSteps() {
       action: async () => {},
     },
     {
+      caption: "One more thing worth having upfront: occupancy is tracked two different ways here, on purpose, not a bug you'll notice later. A real-time signal, how full the restaurant is right now, today, drives that badge up top, the diner-facing vibe display, and the promotional-offer skill, all answering 'is right now a good moment'. A separate, per-slot signal, how full one specific future date and time already is, drives pricing and the minimum-party-size skill, answering 'is this particular booking a good idea'. They'll show different numbers at the same time, correctly, you'll see both as we go.",
+      action: async () => Demo.highlight(document.getElementById("occupancy-pill")),
+    },
+    {
       caption: "Five tables here, each with a real type, capacity, and minimum party size, the actual inventory the rest of this demo works against.",
       action: async () => Demo.highlight(document.getElementById("tables-grid").closest(".card")),
     },
@@ -156,11 +160,11 @@ function buildStaffSteps() {
       },
     },
     {
-      caption: "It weighs real signals here, occupancy and demand for this specific date and time, not the restaurant's occupancy right now, that's deliberate, worth noticing if its number looks different from the badge up top, they're answering different questions on purpose. Plus how idle this table's been today, how close to closing. This is the kind of context-dependent judgment call that doesn't reduce cleanly to an if-statement, which is exactly why it's the agent's job, not hardcoded logic.",
+      caption: "It weighs real signals here, that per-slot occupancy and demand from earlier, plus how idle this table's been today and how close to closing. This is the kind of context-dependent judgment call that doesn't reduce cleanly to an if-statement, which is exactly why it's the agent's job, not hardcoded logic.",
       action: async () => {},
     },
     {
-      caption: "One more decision point: is now a good moment for a promotional offer? This reuses the same real-time occupancy signal that drives the diner-facing vibe display, how full the restaurant is right now, today, deliberately different from the per-slot signal pricing and the last skill used, a promo decision is genuinely about filling empty seats right now, not about one future booking. Below a threshold, it skips the LLM call entirely rather than paying for a guaranteed no.",
+      caption: "One more decision point: is now a good moment for a promotional offer? This one uses the real-time signal from earlier, the same one behind the badge and the vibe display, a promo decision is about filling empty seats right now, not one future booking. Below a threshold, it skips the LLM call entirely rather than paying for a guaranteed no.",
       action: async () => {
         const btn = document.getElementById("recommend-offer-btn");
         Demo.highlight(btn);
