@@ -6,6 +6,7 @@
  */
 
 let demoCreatedReservationIds = [];
+let demoCreatedOfferId = null;
 let demoDate = null;
 
 function pickDemoDate() {
@@ -133,20 +134,23 @@ function buildStaffSteps() {
     {
       caption: "Let's check whether now is a good moment to run a promotional offer.",
       action: async () => {
-        const btn = document.getElementById("recommend-offer-btn");
-        Demo.highlight(btn);
-        btn.click();
-        await Demo.waitFor(() => document.getElementById("offer-recommendation-outcome").textContent.length > 0);
+        Demo.highlight(document.getElementById("recommend-offer-btn"));
+        const result = await askForOfferRecommendation();
+        if (result?.offer_id) demoCreatedOfferId = result.offer_id;
         await Demo.sleep(500);
       },
     },
     {
       caption: "Watch the outcome, if the discount is within the pre-approved range it goes live immediately; above it, it waits for a human.",
       action: async () => {
-        const offers = await api(`/restaurants/${restaurantId}/offers`);
-        const latest = offers[0];
-        if (latest && latest.status === "PENDING_CONFIRMATION") {
-          await loadOffers();
+        if (!demoCreatedOfferId) {
+          Demo.highlight(document.getElementById("offers-list"));
+          return;
+        }
+        const offer = await api(`/restaurants/${restaurantId}/offers`).then((offers) =>
+          offers.find((o) => o.id === demoCreatedOfferId)
+        );
+        if (offer?.status === "PENDING_CONFIRMATION") {
           const approveBtn = Array.from(document.getElementById("offers-list").querySelectorAll("button")).find(
             (b) => b.textContent === "Approve"
           );
@@ -191,23 +195,41 @@ function buildStaffSteps() {
         const link = document.getElementById("diner-view-link");
         Demo.highlight(link);
         await Demo.sleep(2000);
+        // The demo "ending" by moving on is still an ending, clean up
+        // whatever it created before leaving, the same as Restart/Close
+        // would, rather than only cleaning up on an explicit stop.
+        await cleanupDemoData();
         window.location.href = link.href + "?demo=1";
       },
     },
   ];
 }
 
-async function resetStaffDemo() {
+async function cleanupDemoData() {
   for (const id of demoCreatedReservationIds) {
     try {
       await api(`/reservations/${id}/cancel`, { method: "POST" });
     } catch (e) {
-      // already cancelled or unreachable, fine to ignore for a reset
+      // already cancelled or unreachable, fine to ignore for cleanup
     }
   }
   demoCreatedReservationIds = [];
-  await Promise.all([loadReservations(), loadOccupancy()]);
+
+  if (demoCreatedOfferId) {
+    try {
+      await api(`/offers/${demoCreatedOfferId}`, { method: "DELETE" });
+    } catch (e) {
+      // already gone, fine to ignore for cleanup
+    }
+    demoCreatedOfferId = null;
+  }
+
+  await Promise.all([loadReservations(), loadOccupancy(), loadOffers()]);
 }
+
+// Kept as the name the demo panel's onReset hook expects; just an
+// alias so the intent (this runs on Restart/Close) stays readable.
+const resetStaffDemo = cleanupDemoData;
 
 document.addEventListener("DOMContentLoaded", () => {
   const btn = document.getElementById("run-demo-btn");
@@ -215,6 +237,7 @@ document.addEventListener("DOMContentLoaded", () => {
     btn.onclick = () => {
       demoDate = pickDemoDate();
       demoCreatedReservationIds = [];
+      demoCreatedOfferId = null;
       Demo.start(buildStaffSteps(), resetStaffDemo, 7000);
     };
   }

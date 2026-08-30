@@ -51,3 +51,14 @@ def approve_offer(offer_id: int) -> tuple[sqlite3.Row | None, bool]:
 
 def reject_offer(offer_id: int) -> tuple[sqlite3.Row | None, bool]:
     return _transition(offer_id, "PENDING_CONFIRMATION", "REJECTED")
+
+
+def delete_offer(offer_id: int) -> bool:
+    """Demo-mode cleanup only, see offer_repo.delete."""
+    conn = get_connection()
+    try:
+        with transaction(conn):
+            deleted = offer_repo.delete(conn, offer_id) > 0
+        return deleted
+    finally:
+        conn.close()

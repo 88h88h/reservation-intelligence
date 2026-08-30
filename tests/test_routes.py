@@ -43,15 +43,29 @@ def test_list_tables_for_unknown_restaurant_is_404(client):
     assert response.status_code == 404
 
 
-def test_occupancy_is_zero_with_no_confirmed_reservations(client):
-    restaurant_id, tables = _seeded_ids(client)
-    response = client.get(f"/restaurants/{restaurant_id}/occupancy")
+def test_occupancy_is_zero_for_a_restaurant_with_no_confirmed_reservations(client):
+    # Blue Anchor is deliberately left untouched by the demo occupancy
+    # baseline (see ensure_demo_occupancy_baseline), the genuine "quiet"
+    # contrast against The Rosemary/Nomad Kitchen's seeded baseline.
+    restaurants = client.get("/restaurants").json()
+    blue_anchor = next(r for r in restaurants if r["name"] == "Blue Anchor")
+    response = client.get(f"/restaurants/{blue_anchor['id']}/occupancy")
     assert response.status_code == 200
     body = response.json()
     assert body["occupancy_ratio"] == 0.0
     assert body["vibe_label"] == "Quiet"
     assert body["occupied_tables"] == 0
+    assert body["total_tables"] == 4
+
+
+def test_occupancy_reflects_the_seeded_demo_baseline(client):
+    restaurant_id, tables = _seeded_ids(client)  # The Rosemary
+    response = client.get(f"/restaurants/{restaurant_id}/occupancy")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["occupied_tables"] == 2
     assert body["total_tables"] == len(tables)
+    assert body["occupancy_ratio"] == 2 / len(tables)
 
 
 def test_list_users_returns_seeded_data(client):
@@ -275,4 +289,19 @@ def test_approve_and_reject_offer_lifecycle(client):
     assert reject_active.status_code == 409
 
     unknown = client.post("/offers/999/approve")
+    assert unknown.status_code == 404
+
+
+def test_delete_offer_route(client):
+    restaurant_id, _ = _seeded_ids(client)
+    menu_item_id = client.get(f"/restaurants/{restaurant_id}/menu-items").json()[0]["id"]
+    created = client.post("/offers", json={"menu_item_id": menu_item_id, "proposed_value": 10.00}).json()
+
+    response = client.delete(f"/offers/{created['id']}")
+    assert response.status_code == 204
+
+    listed = client.get(f"/restaurants/{restaurant_id}/offers").json()
+    assert all(o["id"] != created["id"] for o in listed)
+
+    unknown = client.delete("/offers/999")
     assert unknown.status_code == 404

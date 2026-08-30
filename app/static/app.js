@@ -341,8 +341,10 @@ async function askForOfferRecommendation() {
       : "";
     setReasoning(outcome, "callout agent-result", prefix + result.reasoning);
     await loadOffers();
+    return result;
   } catch (err) {
     setReasoning(outcome, "callout error", err.message);
+    return null;
   }
 }
 

@@ -67,6 +67,38 @@ def test_seed_if_empty_is_idempotent(test_db):
     assert restaurant_count == len(db._SEED_RESTAURANTS)
 
 
+def test_demo_occupancy_baseline_creates_varied_occupancy(test_db):
+    import app.services.occupancy_service as occupancy_service
+
+    db.seed_if_empty()
+    db.ensure_demo_occupancy_baseline()
+    conn = db.get_connection()
+
+    def occupancy(name):
+        restaurant_id = conn.execute("SELECT id FROM restaurant WHERE name = ?", (name,)).fetchone()["id"]
+        return occupancy_service.current_occupancy_ratio(conn, restaurant_id)
+
+    rosemary = occupancy("The Rosemary")
+    blue_anchor = occupancy("Blue Anchor")
+    nomad = occupancy("Nomad Kitchen")
+    conn.close()
+
+    assert rosemary == 2 / 5
+    assert blue_anchor == 0.0
+    assert nomad == 3 / 4
+    assert len({rosemary, blue_anchor, nomad}) == 3  # genuinely different, not all equal
+
+
+def test_demo_occupancy_baseline_is_idempotent(test_db):
+    db.seed_if_empty()
+    db.ensure_demo_occupancy_baseline()
+    db.ensure_demo_occupancy_baseline()
+    conn = db.get_connection()
+    (count,) = conn.execute("SELECT COUNT(*) FROM reservation WHERE idempotency_key LIKE 'demo-baseline-%'").fetchone()
+    conn.close()
+    assert count == 5  # 2 (Rosemary) + 3 (Nomad Kitchen), not doubled
+
+
 def test_foreign_keys_are_enforced(test_db):
     """SQLite disables FK enforcement by default; this confirms the
     PRAGMA in get_connection() is actually taking effect.

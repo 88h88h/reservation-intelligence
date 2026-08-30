@@ -147,6 +147,15 @@ const Demo = (() => {
   function stop() {
     active = false;
     if (advanceTimer) clearTimeout(advanceTimer);
+    // Unblock the runner loop immediately if it's mid-wait between
+    // steps, otherwise it sits there until that wait's own timer
+    // fires (or forever, if paused) before it next checks `active`.
+    if (resolveAdvance) {
+      const resolve = resolveAdvance;
+      resolveAdvance = null;
+      resolve();
+    }
+    hidePanel();
   }
 
   function advanceNow() {

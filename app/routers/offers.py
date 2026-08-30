@@ -66,3 +66,12 @@ def reject_offer(offer_id: int):
     if not transitioned and offer["status"] != "REJECTED":
         raise HTTPException(status_code=409, detail=f"cannot reject an offer with status {offer['status']}")
     return OfferResponse.from_row(offer)
+
+
+@router.delete("/offers/{offer_id}", status_code=204)
+def delete_offer(offer_id: int):
+    """Demo-mode cleanup only, not used by normal offer management
+    (approve/reject), see offer_service.delete_offer.
+    """
+    if not offer_service.delete_offer(offer_id):
+        raise HTTPException(status_code=404, detail="offer not found")

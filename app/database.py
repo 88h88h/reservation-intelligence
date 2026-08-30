@@ -6,6 +6,7 @@ entirely rather than quoting it everywhere.
 
 import sqlite3
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 
 DB_PATH = Path(__file__).parent.parent / "reservation.db"
@@ -204,5 +205,71 @@ def seed_if_empty() -> None:
                     """,
                     [(restaurant_id, *m) for m in restaurant["menu_items"]],
                 )
+    finally:
+        conn.close()
+
+
+# Which tables are confirmed all day, "today", so browsing by vibe on the
+# diner page shows real contrast instead of three identical 0%s: The
+# Rosemary comfortably busy, Blue Anchor left untouched (genuinely quiet),
+# Nomad Kitchen lively.
+_DEMO_OCCUPANCY_BASELINE = {
+    "The Rosemary": ["Table 2", "Table 3"],
+    "Nomad Kitchen": ["Table 1", "Table 2", "Table 3"],
+}
+
+
+def ensure_demo_occupancy_baseline() -> None:
+    """Seed a stable, demo-ready occupancy baseline for today's date.
+
+    Runs on every startup, not just when the database is first
+    created, and is keyed to today's date so it stays correct across
+    days without needing a fresh database, idempotent via a dedicated
+    idempotency_key pattern, so restarting the app repeatedly never
+    creates duplicates.
+    """
+    conn = get_connection()
+    try:
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        user_row = conn.execute("SELECT id FROM user ORDER BY id LIMIT 1").fetchone()
+        if user_row is None:
+            return
+        user_id = user_row["id"]
+
+        for restaurant_name, table_names in _DEMO_OCCUPANCY_BASELINE.items():
+            restaurant = conn.execute("SELECT id FROM restaurant WHERE name = ?", (restaurant_name,)).fetchone()
+            if restaurant is None:
+                continue
+            restaurant_id = restaurant["id"]
+
+            for table_name in table_names:
+                table = conn.execute(
+                    "SELECT id, base_price FROM dining_table WHERE restaurant_id = ? AND name = ?",
+                    (restaurant_id, table_name),
+                ).fetchone()
+                if table is None:
+                    continue
+                table_id = table["id"]
+
+                idempotency_key = f"demo-baseline-{table_id}-{today}"
+                if conn.execute(
+                    "SELECT 1 FROM reservation WHERE idempotency_key = ?", (idempotency_key,)
+                ).fetchone():
+                    continue
+
+                with transaction(conn):
+                    conn.execute(
+                        """
+                        INSERT INTO reservation
+                            (status, restaurant_id, table_id, user_id, person_count, price, idempotency_key)
+                        VALUES ('CONFIRMED', ?, ?, ?, 2, ?, ?)
+                        """,
+                        (restaurant_id, table_id, user_id, table["base_price"], idempotency_key),
+                    )
+                    reservation_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+                    conn.executemany(
+                        "INSERT INTO slot_claim (reservation_id, table_id, date, slot_index) VALUES (?, ?, ?, ?)",
+                        [(reservation_id, table_id, today, slot) for slot in range(96)],
+                    )
     finally:
         conn.close()

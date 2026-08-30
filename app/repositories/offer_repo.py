@@ -33,3 +33,13 @@ def update_status(conn: sqlite3.Connection, offer_id: int, status: str) -> int:
     """
     cursor = conn.execute("UPDATE offer SET status = ? WHERE id = ?", (status, offer_id))
     return cursor.rowcount
+
+
+def delete(conn: sqlite3.Connection, offer_id: int) -> int:
+    """A genuine delete, unlike the rest of this project's lifecycle
+    entities (reservations are cancelled, never removed). Only used by
+    demo-mode cleanup, real offers stay auditable via status transitions;
+    this exists so a rehearsed demo run leaves no visible trace behind.
+    """
+    cursor = conn.execute("DELETE FROM offer WHERE id = ?", (offer_id,))
+    return cursor.rowcount

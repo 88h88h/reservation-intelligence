@@ -12,7 +12,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.database import init_db, seed_if_empty
+from app.database import ensure_demo_occupancy_baseline, init_db, seed_if_empty
 from app.routers import agent, offers, reservations, restaurants, users
 from app.services.reservation_service import release_expired_reservations
 
@@ -29,6 +29,7 @@ async def _expiry_sweep_loop() -> None:
 async def lifespan(app: FastAPI):
     init_db()
     seed_if_empty()
+    ensure_demo_occupancy_baseline()
     sweep_task = asyncio.create_task(_expiry_sweep_loop())
     yield
     sweep_task.cancel()

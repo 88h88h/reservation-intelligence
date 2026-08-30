@@ -835,6 +835,14 @@ body.diner {
   padding: 0.35rem 0.5rem;
 }
 
+/* The dropdown's open option LIST renders with the browser's own
+   native (light) popup background regardless of the select's own
+   styling above, so its text needs to stay dark or it's invisible. */
+.demo-controls select option {
+  color: var(--text);
+  background: white;
+}
+
 .demo-controls button {
   background: rgba(255, 255, 255, 0.12);
   border-color: rgba(255, 255, 255, 0.25);

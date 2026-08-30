@@ -24,9 +24,12 @@ decides), the free-text agent panel routing correctly, and a cancellation,
 then navigates into the diner view, where a matching demo auto-continues
 (browsing by vibe, viewing one restaurant's live occupancy, booking). A
 control panel (pause/next/speed/restart) lets the pace follow your narration
-rather than a fixed timer. "Restart"/"Close" clean up whatever the demo
-booked, so it can be rehearsed as many times as needed before recording for
-real.
+rather than a fixed timer. Reaching the end, or "Restart"/"Close", all clean
+up everything the run created, reservations cancelled, any offer it
+generated deleted outright (offers have no cancel-equivalent, so a genuine
+delete exists for this, used only by demo cleanup, never by normal offer
+management), so it can be rehearsed as many times as needed before recording
+for real, with no leftover clutter between runs.
 
 ## Requirements
 
@@ -56,7 +59,13 @@ Also linked from the staff dashboard's header. On startup, the app creates
 the SQLite database (`reservation.db`) if it does not exist yet, applies the
 schema, and seeds it with sample data, three restaurants (so the diner browse
 view has something real to compare), a handful of tables and menu items each,
-and two users, so there is something real to work against immediately.
+and two users. It also seeds a demo occupancy baseline for today, some tables
+confirmed all day so The Rosemary reads as comfortably busy and Nomad Kitchen
+as lively, while Blue Anchor is deliberately left alone as the genuinely
+quiet one, so browsing by vibe shows real contrast rather than three
+identical 0%s. This runs on every startup (not just when the database is
+first created), so it stays correct across days without needing a fresh
+database.
 
 ## Running the tests
 
@@ -127,6 +136,9 @@ pytest
 - `GET /restaurants/{id}/menu-items`, `GET /restaurants/{id}/offers`,
   `POST /offers` (staff-created, always live immediately),
   `POST /offers/{id}/approve`, `POST /offers/{id}/reject`: offer management.
+  `DELETE /offers/{id}` also exists, demo-mode cleanup only, real offers
+  stay auditable via status transitions, this is never used by normal
+  offer management.
 
 ### Concurrency model, in short
 

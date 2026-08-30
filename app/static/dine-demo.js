@@ -60,7 +60,15 @@ function buildDinerSteps() {
     },
     {
       caption: "That's the full loop, browse by vibe, check availability, book, staff manage confirmation and edge cases from their dashboard.",
-      action: async () => Demo.highlight(document.querySelector(".confirmation") || document.querySelector(".diner-card")),
+      action: async () => {
+        Demo.highlight(document.querySelector(".confirmation") || document.querySelector(".diner-card"));
+        // The confirmation screen shown above is a static view, it
+        // doesn't re-render live, so cleaning up here doesn't disturb
+        // what's on screen, "the demo ending" should clean up too,
+        // not just an explicit Restart/Close.
+        await Demo.sleep(1500);
+        await resetDinerDemo();
+      },
     },
   ];
 }

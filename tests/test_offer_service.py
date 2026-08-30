@@ -54,6 +54,26 @@ def test_approving_already_active_offer_is_not_a_transition(test_db):
     assert row["status"] == "ACTIVE"  # still correct, just wasn't a fresh transition
 
 
+def test_delete_offer(test_db):
+    db.seed_if_empty()
+    conn = db.get_connection()
+    menu_item_id = _seeded_menu_item_id(conn)
+    conn.close()
+    offer = offer_service.create_manual_offer(menu_item_id=menu_item_id, proposed_value=3.00)
+
+    deleted = offer_service.delete_offer(offer["id"])
+
+    assert deleted is True
+    conn = db.get_connection()
+    row = conn.execute("SELECT 1 FROM offer WHERE id = ?", (offer["id"],)).fetchone()
+    conn.close()
+    assert row is None
+
+
+def test_delete_unknown_offer_returns_false(test_db):
+    assert offer_service.delete_offer(999) is False
+
+
 def test_reject_pending_offer(test_db):
     db.seed_if_empty()
     conn = db.get_connection()
