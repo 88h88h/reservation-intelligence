@@ -9,7 +9,10 @@
 <body class="diner">
   <div class="diner-topbar" style="justify-content: space-between;">
     <a href="/dine">&larr; All restaurants</a>
-    <a href="/">Staff dashboard &rarr;</a>
+    <div style="display: flex; align-items: center; gap: 1rem;">
+      <button id="run-demo-btn" class="agent">Run Demo</button>
+      <a href="/">Staff dashboard &rarr;</a>
+    </div>
   </div>
 
   <main class="diner-main">
@@ -69,5 +72,7 @@
   </main>
 
   <script src="/static/dine.js"></script>
+  <script src="/static/demo-common.js"></script>
+  <script src="/static/dine-demo.js"></script>
 </body>
 </html>

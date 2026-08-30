@@ -8,7 +8,25 @@ promotional decisions inside clearly defined autonomy boundaries.
 
 Feature-complete for the minimum requirements: database schema, reservation
 lifecycle, dynamic pricing, the booking API, all three agent skills, the
-Reservation Operations Agent, and a dashboard tying it together.
+Reservation Operations Agent, and a dashboard tying it together. Both
+dashboards also have a "Run Demo" button, a scripted walkthrough for
+recording an explanation video, see Demo mode below.
+
+## Demo mode
+
+Both `/` and `/dine/{id}` have a "Run Demo" button that drives the real UI
+end to end, real form fills, real button clicks, real API calls, nothing
+staged, with a caption for each step so it's easy to narrate over. The staff
+demo covers a happy-path booking, a genuine conflict (triggering skill 1 and
+booking its suggested alternative), an under-minimum party size (skill 2),
+the promo recommendation (skill 3, reacting live to whatever it actually
+decides), the free-text agent panel routing correctly, and a cancellation,
+then navigates into the diner view, where a matching demo auto-continues
+(browsing by vibe, viewing one restaurant's live occupancy, booking). A
+control panel (pause/next/speed/restart) lets the pace follow your narration
+rather than a fixed timer. "Restart"/"Close" clean up whatever the demo
+booked, so it can be rehearsed as many times as needed before recording for
+real.
 
 ## Requirements
 
@@ -83,7 +101,10 @@ pytest
   a warmer, single-column, "restaurant site" feel, deliberately distinct from
   the staff view: browse restaurants by their live vibe, then book on one
   restaurant's page, with a real visual occupancy indicator (fill bar plus a
-  dot per actual table), not just a percentage in text.
+  dot per actual table), not just a percentage in text. `demo-common.js` is
+  the shared scripted-walkthrough engine (panel UI, pacing, pause/next/
+  restart); `demo.js` and `dine-demo.js` each define that page's own step
+  list on top of it, see Demo mode above.
 
 ## API overview
 

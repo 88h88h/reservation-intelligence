@@ -2,6 +2,7 @@ let restaurantId = null;
 let tablesCache = [];
 let menuItemsCache = [];
 let lastRequestContext = null; // last availability-check params, reused as default context for the free-text agent panel
+let lastViewedTableId = null; // the table most recently acted on (booked, or asked about), a better implicit default than "the first table" for the free-text panel
 
 async function api(path, options = {}) {
   const res = await fetch(path, {
@@ -201,6 +202,7 @@ function renderAvailability(tables, request) {
 }
 
 async function askMinPartyOverride(tableId, request, container) {
+  lastViewedTableId = tableId;
   setReasoning(container, "callout suggest", "Asking the agent…");
   try {
     const decision = await api("/agent/evaluate-min-party-override", {
@@ -223,6 +225,7 @@ async function askMinPartyOverride(tableId, request, container) {
 }
 
 async function book(tableId, request) {
+  lastViewedTableId = tableId;
   const outcomeEl = document.getElementById("booking-outcome");
   outcomeEl.innerHTML = `<div class="empty">Booking&hellip;</div>`;
   const idempotencyKey = crypto.randomUUID();
@@ -411,7 +414,7 @@ document.getElementById("agent-form").addEventListener("submit", async (e) => {
   setReasoning(resultEl, "callout suggest", "Thinking…");
 
   const ctx = lastRequestContext || { date: document.getElementById("res-date").value, hour: 19, minute: 0, duration: 60, partySize: 2 };
-  const defaultTableId = tablesCache.length ? tablesCache[0].id : null;
+  const defaultTableId = lastViewedTableId || (tablesCache.length ? tablesCache[0].id : null);
 
   try {
     const response = await api("/agent/handle", {
