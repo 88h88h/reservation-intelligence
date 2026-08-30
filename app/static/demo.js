@@ -95,9 +95,12 @@ function buildStaffSteps() {
       },
     },
     {
-      caption: "Now the real test: a second request for that exact same table and time, the classic check-then-act race condition. Triggered directly here since the normal search would already filter this table out for being taken, which is itself part of the point, the guarantee holds even if something bypasses the UI.",
+      caption: "Now the real test: a second request for that exact same table and time, the classic check-then-act race condition. No button to press here on purpose, the normal search would already filter this table out for being taken, so this simulates a request that skips that search entirely, straight to the booking API, exactly the guarantee that has to hold regardless of how a request arrives.",
       action: async () => {
-        Demo.highlight(document.getElementById("booking-outcome"));
+        const outcomeEl = document.getElementById("booking-outcome");
+        Demo.highlight(outcomeEl);
+        outcomeEl.innerHTML = `<div class="callout suggest">Simulating a second request for Table 1, 7 PM, right now&hellip;</div>`;
+        await Demo.sleep(1400);
         const table1Id = tablesCache.find((t) => t.name === table1Name)?.id;
         await book(table1Id, { date: demoDate, hour: 19, minute: 0, duration: 60, partySize: 2 });
         await Demo.waitFor(() => document.getElementById("booking-outcome").textContent.includes("just became unavailable"));
