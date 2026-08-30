@@ -420,6 +420,12 @@ document.getElementById("manual-offer-form").addEventListener("submit", async (e
 
 // ---------- agent free-text panel ----------
 
+const AGENT_TOOL_LABELS = {
+  find_alternatives_tool: "Skill 1: Find alternatives",
+  evaluate_min_party_override_tool: "Skill 2: Minimum party size override",
+  recommend_offer_tool: "Skill 3: Promotional offer recommendation",
+};
+
 document.getElementById("agent-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const situation = document.getElementById("agent-situation").value.trim();
@@ -450,7 +456,7 @@ document.getElementById("agent-form").addEventListener("submit", async (e) => {
     }
     resultEl.innerHTML = "";
     const label = el(`<strong></strong>`);
-    label.textContent = response.tool_used + ": ";
+    label.textContent = (AGENT_TOOL_LABELS[response.tool_used] || response.tool_used) + ": ";
     resultEl.appendChild(label);
     resultEl.className = "callout agent-result";
     resultEl.appendChild(document.createTextNode(response.result.reasoning || JSON.stringify(response.result)));
