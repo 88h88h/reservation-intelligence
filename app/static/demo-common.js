@@ -97,24 +97,31 @@ const Demo = (() => {
     input.classList.remove("demo-field-flash");
   }
 
+  let minimized = false;
+
   function ensureDemoPanel() {
     if (document.getElementById("demo-panel")) return;
     const panel = document.createElement("div");
     panel.id = "demo-panel";
     panel.className = "demo-panel";
     panel.innerHTML = `
-      <div class="demo-caption" id="demo-caption">Ready.</div>
-      <div class="demo-controls">
+      <div class="demo-panel-header">
         <span class="demo-step-count" id="demo-step-count"></span>
-        <select id="demo-speed">
-          <option value="4000">Fast (4s)</option>
-          <option value="7000" selected>Normal (7s)</option>
-          <option value="12000">Slow (12s)</option>
-        </select>
-        <button id="demo-pause-btn">Pause</button>
-        <button id="demo-next-btn">Next</button>
-        <button id="demo-restart-btn">Restart</button>
-        <button id="demo-stop-btn">Close</button>
+        <button id="demo-minimize-btn" type="button">Hide</button>
+      </div>
+      <div class="demo-panel-body" id="demo-panel-body">
+        <div class="demo-caption" id="demo-caption">Ready.</div>
+        <div class="demo-controls">
+          <select id="demo-speed">
+            <option value="4000">Fast (4s)</option>
+            <option value="7000" selected>Normal (7s)</option>
+            <option value="12000">Slow (12s)</option>
+          </select>
+          <button id="demo-pause-btn">Pause</button>
+          <button id="demo-next-btn">Next</button>
+          <button id="demo-restart-btn">Restart</button>
+          <button id="demo-stop-btn">Close</button>
+        </div>
       </div>
     `;
     document.body.appendChild(panel);
@@ -136,11 +143,28 @@ const Demo = (() => {
     document.getElementById("demo-speed").onchange = (e) => {
       delayMs = Number(e.target.value);
     };
+    // Collapses the caption/controls so they don't cover whatever the
+    // step just changed underneath, without pausing or stopping the
+    // demo, it keeps running, just out of the way until brought back.
+    document.getElementById("demo-minimize-btn").onclick = () => {
+      minimized = !minimized;
+      applyMinimizedState();
+    };
+  }
+
+  function applyMinimizedState() {
+    const panel = document.getElementById("demo-panel");
+    if (!panel) return;
+    panel.classList.toggle("demo-panel-minimized", minimized);
+    const btn = document.getElementById("demo-minimize-btn");
+    if (btn) btn.textContent = minimized ? "Show" : "Hide";
   }
 
   function showPanel() {
     ensureDemoPanel();
     document.getElementById("demo-panel").style.display = "flex";
+    minimized = false;
+    applyMinimizedState();
   }
 
   function hidePanel() {

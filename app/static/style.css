@@ -806,6 +806,27 @@ body.diner {
   max-width: min(92vw, 640px);
 }
 
+.demo-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.demo-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.demo-panel-minimized .demo-panel-body {
+  display: none;
+}
+
+.demo-panel-minimized {
+  padding: 0.55rem 0.9rem;
+}
+
 .demo-caption {
   font-size: 0.92rem;
   font-weight: 600;
@@ -823,7 +844,21 @@ body.diner {
   font-size: 0.72rem;
   color: rgba(255, 255, 255, 0.6);
   font-weight: 700;
-  margin-right: 0.3rem;
+}
+
+#demo-minimize-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+#demo-minimize-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
 }
 
 .demo-controls select {

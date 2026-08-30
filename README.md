@@ -29,7 +29,7 @@ routing correctly, and a cancellation, then navigates into the diner-facing
 side, starting with the restaurant browse list, the actual demonstration of
 comparing real, seeded occupancy differences across restaurants, before
 continuing into one restaurant's page (live occupancy, active offers,
-booking). A control panel (pause/next/speed/restart) lets the pace follow
+booking). A control panel (pause/next/speed/restart/hide) lets the pace follow
 your narration rather than a fixed timer. Reaching the end, or
 "Restart"/"Close", all clean up everything the run created, reservations
 cancelled, any offer it generated deleted outright (offers have no
