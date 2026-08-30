@@ -33,6 +33,17 @@ function fmtDateTime(iso) {
   return iso.replace("T", " ").slice(0, 16);
 }
 
+function fmtBookingWindow(r) {
+  if (!r.booking_date || r.start_hour == null) {
+    return "no longer holds a slot";
+  }
+  const endMinutes = r.start_hour * 60 + r.start_minute + r.duration_minutes;
+  const endHour = Math.floor(endMinutes / 60) % 24;
+  const endMinute = endMinutes % 60;
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${r.booking_date}, ${pad(r.start_hour)}:${pad(r.start_minute)}-${pad(endHour)}:${pad(endMinute)}`;
+}
+
 function setReasoning(container, className, prefix) {
   container.className = className;
   container.textContent = "";
@@ -108,6 +119,7 @@ async function loadReservations() {
       <div class="row">
         <div class="main">
           <div class="title">${table ? table.name : "Table " + r.table_id} &middot; ${r.person_count} guests</div>
+          <div class="subtitle">${fmtBookingWindow(r)}</div>
           <div class="subtitle">${fmtMoney(r.price)} &middot; created ${fmtDateTime(r.created_at)}</div>
         </div>
         <span class="badge ${r.status}">${r.status}</span>

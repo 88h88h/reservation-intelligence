@@ -201,6 +201,44 @@ def test_get_reservation_not_found(client):
     assert response.status_code == 404
 
 
+def test_reservation_response_includes_actual_booking_window(client):
+    restaurant_id, tables = _seeded_ids(client)
+    table_id = tables[0]["id"]
+
+    create = client.post(
+        "/reservations",
+        json={
+            "restaurant_id": restaurant_id,
+            "table_id": table_id,
+            "user_id": 1,
+            "person_count": 2,
+            "date": DATE,
+            "hour": 19,
+            "minute": 0,
+            "duration_minutes": 60,
+            "idempotency_key": "booking-window-key",
+        },
+    ).json()
+    assert create["booking_date"] == DATE
+    assert create["start_hour"] == 19
+    assert create["start_minute"] == 0
+    assert create["duration_minutes"] == 60
+
+    # Same fields visible from the list endpoint, not just create's response.
+    listed = client.get(f"/restaurants/{restaurant_id}/reservations").json()
+    match = next(r for r in listed if r["id"] == create["id"])
+    assert match["booking_date"] == DATE
+    assert match["start_hour"] == 19
+
+    # Once cancelled, the slot claims are gone, so there's genuinely no
+    # date left to report, not a stale one.
+    client.post(f"/reservations/{create['id']}/cancel")
+    after_cancel = client.get(f"/reservations/{create['id']}").json()
+    assert after_cancel["booking_date"] is None
+    assert after_cancel["start_hour"] is None
+    assert after_cancel["duration_minutes"] is None
+
+
 def test_confirm_then_cancel_flow(client):
     restaurant_id, tables = _seeded_ids(client)
     table_id = tables[0]["id"]

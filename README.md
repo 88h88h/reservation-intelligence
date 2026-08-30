@@ -133,7 +133,10 @@ pytest
   `GET /users`: browsing.
 - `POST /reservations`, `GET /reservations/{id}`,
   `POST /reservations/{id}/confirm`, `POST /reservations/{id}/cancel`: booking
-  lifecycle.
+  lifecycle. Every reservation response includes the actual booked
+  `booking_date`/`start_hour`/`start_minute`/`duration_minutes`, derived
+  fresh from `slot_claim` on every read, not stored redundantly, `null` once
+  a reservation is cancelled or expired and no longer holds any slot.
 - `POST /agent/find-alternatives`: skill 1, suggests an alternative table or
   time after a failed booking attempt.
 - `POST /agent/evaluate-min-party-override`: skill 2, evaluates whether to

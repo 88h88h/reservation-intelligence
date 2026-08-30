@@ -32,10 +32,27 @@ class ReservationResponse(BaseModel):
     time_of_confirmation: str | None
     checkin_time: str | None
     checkout_time: str | None
+    booking_date: str | None
+    start_hour: int | None
+    start_minute: int | None
+    duration_minutes: int | None
 
     @classmethod
     def from_row(cls, row) -> "ReservationResponse":
-        return cls(**dict(row))
+        data = dict(row)
+        start_slot_index = data.pop("start_slot_index", None)
+        slot_count = data.pop("slot_count", 0)
+        if start_slot_index is None:
+            # No active slot_claim rows left, a cancelled or expired
+            # reservation, there's genuinely no date to report anymore.
+            data["start_hour"] = None
+            data["start_minute"] = None
+            data["duration_minutes"] = None
+        else:
+            data["start_hour"] = start_slot_index * 15 // 60
+            data["start_minute"] = start_slot_index * 15 % 60
+            data["duration_minutes"] = slot_count * 15
+        return cls(**data)
 
 
 class RestaurantResponse(BaseModel):

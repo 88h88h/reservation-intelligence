@@ -61,7 +61,7 @@ function buildStaffSteps() {
       },
     },
     {
-      caption: "Table 1 is free. Booking it now, invisibly, this request carries a unique idempotency key generated client-side, so a duplicate click or a retried request can never create two reservations. Watch the price too, it's computed live from current occupancy and demand, not a fixed number pulled off the table.",
+      caption: "Table 1 is free for this date and time specifically, other bookings for it may already exist on other dates, and each row below shows exactly which, so that's checkable, not just asserted. Booking it now, invisibly, this request carries a unique idempotency key generated client-side, so a duplicate click or a retried request can never create two reservations. Watch the price too, it's computed live from current occupancy and demand, not a fixed number pulled off the table.",
       action: async () => {
         const row = await Demo.waitFor(() =>
           Demo.findRowByTitleSubstring(document.getElementById("availability-results"), table1Name)

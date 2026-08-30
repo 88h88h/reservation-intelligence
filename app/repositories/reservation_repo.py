@@ -40,13 +40,41 @@ def insert_slot_claim(conn: sqlite3.Connection, *, reservation_id: int, table_id
 
 
 def list_for_restaurant(conn: sqlite3.Connection, restaurant_id: int) -> list[sqlite3.Row]:
+    """Includes the actual booked date/start slot/slot count, derived
+    from slot_claim, not stored redundantly on the reservation itself.
+    A cancelled or expired reservation has no claims left (they're
+    deleted on release), so these come back NULL for it, an accurate
+    answer, "this no longer holds any date", not a stale one.
+    """
     return conn.execute(
-        "SELECT * FROM reservation WHERE restaurant_id = ? ORDER BY created_at DESC", (restaurant_id,)
+        """
+        SELECT r.*, sc.date AS booking_date, MIN(sc.slot_index) AS start_slot_index, COUNT(sc.id) AS slot_count
+        FROM reservation r
+        LEFT JOIN slot_claim sc ON sc.reservation_id = r.id
+        WHERE r.restaurant_id = ?
+        GROUP BY r.id
+        ORDER BY r.created_at DESC
+        """,
+        (restaurant_id,),
     ).fetchall()
 
 
 def get_by_id(conn: sqlite3.Connection, reservation_id: int) -> sqlite3.Row | None:
-    return conn.execute("SELECT * FROM reservation WHERE id = ?", (reservation_id,)).fetchone()
+    """Same derived booking_date/start_slot_index/slot_count as
+    list_for_restaurant, so any endpoint returning a reservation shows
+    the same complete picture, not a subset depending on which query
+    happened to fetch it.
+    """
+    return conn.execute(
+        """
+        SELECT r.*, sc.date AS booking_date, MIN(sc.slot_index) AS start_slot_index, COUNT(sc.id) AS slot_count
+        FROM reservation r
+        LEFT JOIN slot_claim sc ON sc.reservation_id = r.id
+        WHERE r.id = ?
+        GROUP BY r.id
+        """,
+        (reservation_id,),
+    ).fetchone()
 
 
 def get_by_idempotency_key(conn: sqlite3.Connection, idempotency_key: str) -> sqlite3.Row | None:
