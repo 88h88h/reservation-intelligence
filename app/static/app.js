@@ -421,9 +421,9 @@ document.getElementById("manual-offer-form").addEventListener("submit", async (e
 // ---------- agent free-text panel ----------
 
 const AGENT_TOOL_LABELS = {
-  find_alternatives_tool: "Skill 1: Find alternatives",
-  evaluate_min_party_override_tool: "Skill 2: Minimum party size override",
-  recommend_offer_tool: "Skill 3: Promotional offer recommendation",
+  find_alternatives_tool: "Alternative table suggestion",
+  evaluate_min_party_override_tool: "Seating recommendation",
+  recommend_offer_tool: "Promotional offer suggestion",
 };
 
 document.getElementById("agent-form").addEventListener("submit", async (e) => {
