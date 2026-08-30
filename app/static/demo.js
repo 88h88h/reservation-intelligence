@@ -95,7 +95,7 @@ function buildStaffSteps() {
       },
     },
     {
-      caption: "Now the real test: a second request for that exact same table and time, the classic check-then-act race condition. No button to press here on purpose, the normal search would already filter this table out for being taken, so this simulates a request that skips that search entirely, straight to the booking API, exactly the guarantee that has to hold regardless of how a request arrives.",
+      caption: "Now the real test: a second request for that exact same table and time. Not run through this screen's own search, which would correctly show Table 1 as taken by now, this stands in for a request reaching the server independent of what this dashboard happens to display right now, another terminal, a phone booking being entered, or, as we'll see in a minute, a diner on the other side of this same system. The guarantee has to hold no matter where the request comes from, that's the actual point.",
       action: async () => {
         const outcomeEl = document.getElementById("booking-outcome");
         Demo.highlight(outcomeEl);
@@ -241,14 +241,24 @@ function buildStaffSteps() {
       },
     },
     {
-      caption: "That's the staff side, booking, conflict handling, and three agent skills, each with a real, distinct autonomy boundary. Now, the diner's side, starting with browsing restaurants by vibe.",
+      caption: "That's the staff side, booking, conflict handling, and three agent skills, each with a real, distinct autonomy boundary. Now, the diner's side, starting with browsing restaurants by vibe, and we'll come back to this exact Table 1 booking from the other end of that same race.",
       action: async () => {
         Demo.highlight(document.getElementById("diner-view-link"));
         await Demo.sleep(2000);
-        // The demo "ending" by moving on is still an ending, clean up
-        // whatever it created before leaving, the same as Restart/Close
-        // would, rather than only cleaning up on an explicit stop.
-        await cleanupDemoData();
+        // Table 1's confirmed booking needs to still be live when the
+        // diner demo deliberately collides with it a few steps from
+        // now, so cleanup of everything this run created is deferred
+        // to the diner demo's own end instead of happening here.
+        // Carried across the page navigation via sessionStorage, since
+        // in-memory state doesn't survive a real page load.
+        sessionStorage.setItem(
+          "demoCarryState",
+          JSON.stringify({
+            demoDate,
+            reservationIds: demoCreatedReservationIds,
+            offerId: demoCreatedOfferId,
+          })
+        );
         window.location.href = "/dine?demo=1";
       },
     },

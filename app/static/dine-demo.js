@@ -4,6 +4,9 @@
  */
 
 let dinerDemoCreatedReservationId = null;
+let demoCarriedDate = null;
+let demoCarriedReservationIds = [];
+let demoCarriedOfferId = null;
 
 function pickDinerDemoTime() {
   // A handful of distinct times, not always 18:00, so repeated
@@ -34,7 +37,41 @@ function buildDinerSteps() {
       },
     },
     {
-      caption: "Now the actual booking flow. It's the exact same POST /reservations endpoint the staff dashboard uses, one booking code path for both audiences, not two implementations to keep in sync.",
+      caption: () =>
+        demoCarriedDate
+          ? `A moment ago, on the staff side, Table 1 got confirmed for 7 PM on ${demoCarriedDate}. Let's try that same table and time from here, the diner's side, and see what losing that race actually looks like from this end, not just that staff's request won.`
+          : "This diner demo is running on its own right now, not chained from the staff one, so there's no live booking on the other side to collide with, skipping ahead to a normal booking.",
+      action: async () => {
+        if (!demoCarriedDate) return;
+        const resultsEl = document.getElementById("diner-results");
+        Demo.highlight(resultsEl);
+        resultsEl.innerHTML = `<div class="callout suggest">Trying to reserve Table 1, 7 PM, ${demoCarriedDate}&hellip;</div>`;
+        await Demo.sleep(1200);
+        const tables = await api(`/restaurants/${restaurantId}/tables`);
+        const table1 = tables.find((t) => t.name === "Table 1");
+        if (!table1) return;
+        await book(table1.id, { date: demoCarriedDate, hour: 19, minute: 0, duration: 60, partySize: 2 });
+        await Demo.waitFor(() => document.getElementById("diner-results").textContent.includes("just got taken"));
+      },
+    },
+    {
+      caption: () =>
+        demoCarriedDate
+          ? "That's the real skill 1 flow, from the diner's own side this time, not staff clicking a button in a dashboard. Same endpoint, same reasoning, a genuinely reused capability, not two separate implementations to keep in sync."
+          : "Nothing to show here this run, moving on.",
+      action: async () => {
+        if (!demoCarriedDate) return;
+        const btn = document.getElementById("diner-results").querySelector("button.agent");
+        if (!btn) return;
+        await Demo.clickWithFeedback(btn);
+        await Demo.waitFor(() => {
+          const text = document.getElementById("diner-results").textContent;
+          return text.includes("Reserve this instead") || text.includes("nothing else fits");
+        });
+      },
+    },
+    {
+      caption: "Now let's see an ordinary booking, one that doesn't collide with anything. It's the exact same POST /reservations endpoint the staff dashboard uses, one booking code path for both audiences, not two implementations to keep in sync.",
       action: async () => {
         const form = document.getElementById("booking-form");
         Demo.highlight(form);
@@ -82,10 +119,48 @@ async function resetDinerDemo() {
     }
     dinerDemoCreatedReservationId = null;
   }
+  // Also cleans up whatever the staff leg created, including Table 1's
+  // booking this demo deliberately collided with, since cleanup for
+  // that leg was deferred here rather than run before the navigation
+  // that brought us to this page.
+  for (const id of demoCarriedReservationIds) {
+    try {
+      await api(`/reservations/${id}/cancel`, { method: "POST" });
+    } catch (e) {
+      // already cancelled or unreachable, fine to ignore for a reset
+    }
+  }
+  demoCarriedReservationIds = [];
+  if (demoCarriedOfferId) {
+    try {
+      await api(`/offers/${demoCarriedOfferId}`, { method: "DELETE" });
+    } catch (e) {
+      // already gone, fine to ignore for a reset
+    }
+    demoCarriedOfferId = null;
+  }
+  demoCarriedDate = null;
+  sessionStorage.removeItem("demoCarryState");
   await loadOccupancy();
 }
 
 function startDinerDemo() {
+  // Only read on the initial start, a Restart mid-run reuses this same
+  // step list and its already-resolved closures, not a fresh build, so
+  // re-reading here would just pick the same values back up anyway;
+  // resetDinerDemo (called before every restart) is what actually
+  // clears these once their state has been cleaned up.
+  try {
+    const raw = sessionStorage.getItem("demoCarryState");
+    if (raw) {
+      const carried = JSON.parse(raw);
+      demoCarriedDate = carried.demoDate || null;
+      demoCarriedReservationIds = carried.reservationIds || [];
+      demoCarriedOfferId = carried.offerId || null;
+    }
+  } catch (e) {
+    // malformed or inaccessible, just run without the carried leg
+  }
   Demo.start(buildDinerSteps(), resetDinerDemo, 7000);
 }
 

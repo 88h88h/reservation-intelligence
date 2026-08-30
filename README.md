@@ -28,8 +28,12 @@ reacting live to whatever it actually decides), the free-text agent panel
 routing correctly, and a cancellation, then navigates into the diner-facing
 side, starting with the restaurant browse list, the actual demonstration of
 comparing real, seeded occupancy differences across restaurants, before
-continuing into one restaurant's page (live occupancy, active offers,
-booking). A control panel (pause/next/speed/restart/hide) lets the pace follow
+continuing into one restaurant's page. There, a diner deliberately tries to
+book the exact table and time staff just confirmed on the other dashboard,
+a genuine collision carried across the page navigation (not two disconnected
+recordings), showing the same skill 1 alternative-suggestion flow from the
+diner's own side this time, live occupancy, active offers, and booking round
+out the page. A control panel (pause/next/speed/restart/hide) lets the pace follow
 your narration rather than a fixed timer. Reaching the end, or
 "Restart"/"Close", all clean up everything the run created, reservations
 cancelled, any offer it generated deleted outright (offers have no
