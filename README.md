@@ -21,7 +21,8 @@ why it matters in a sentence, not the full engineering justification behind
 it, that depth is meant for a separate talking-head explanation recorded
 after, not narrated live over the mouse. The staff demo opens with a brief
 intro before anything starts happening, covers a happy-path booking, a genuine
-conflict (triggering skill 1 and booking its suggested alternative), an
+conflict triggered through a real edit to an already-taken slot (skill 1
+suggesting, and moving the reservation to, an alternative), an
 under-minimum party size (skill 2), the promo recommendation (skill 3,
 reacting live to whatever it actually decides), the free-text agent panel
 routing correctly, and a cancellation, then navigates into the diner-facing
@@ -152,7 +153,9 @@ pytest
   gap in "cancel, then rebook" as two separate requests, a failed rebook
   step there would leave the reservation cancelled with no replacement.
 - `POST /agent/find-alternatives`: skill 1, suggests an alternative table or
-  time after a failed booking attempt.
+  time after a failed booking attempt, reused as-is for a failed edit too
+  (accepting a suggestion there moves the existing reservation via `modify`
+  instead of creating a new one).
 - `POST /agent/evaluate-min-party-override`: skill 2, evaluates whether to
   seat a party below a table's minimum size, given current demand.
 - `POST /agent/recommend-offer`: skill 3, recommends a promotional offer when

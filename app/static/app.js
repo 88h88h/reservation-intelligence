@@ -217,26 +217,65 @@ function toggleReservationEditForm(row, r) {
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const outcome = form.querySelector(".edit-outcome");
-    setReasoning(outcome, "callout suggest", "Saving…");
     const [hourStr, minuteStr] = form.querySelector(".edit-time").value.split(":");
-    try {
-      await api(`/reservations/${r.id}/modify`, {
-        method: "POST",
-        body: JSON.stringify({
-          table_id: Number(tableSelect.value),
-          date: form.querySelector(".edit-date").value,
-          hour: Number(hourStr),
-          minute: Number(minuteStr),
-          duration_minutes: Number(form.querySelector(".edit-duration").value),
-        }),
-      });
-      await Promise.all([loadReservations(), loadOccupancy()]);
-    } catch (err) {
-      setReasoning(outcome, "callout error", err.message);
-    }
+    await submitModifyRequest(
+      r.id,
+      {
+        table_id: Number(tableSelect.value),
+        date: form.querySelector(".edit-date").value,
+        hour: Number(hourStr),
+        minute: Number(minuteStr),
+        duration_minutes: Number(form.querySelector(".edit-duration").value),
+      },
+      r.person_count,
+      outcome
+    );
   });
 
   row.after(form);
+}
+
+// A conflicting edit hits the exact same 409 a failed new booking
+// does, only what happens on accepting a suggestion differs (move
+// this reservation instead of creating a new one), reuses the same
+// findAlternatives helper booking's own 409 handling uses.
+async function submitModifyRequest(reservationId, payload, personCount, outcomeEl) {
+  setReasoning(outcomeEl, "callout suggest", "Saving…");
+  try {
+    await api(`/reservations/${reservationId}/modify`, { method: "POST", body: JSON.stringify(payload) });
+    await Promise.all([loadReservations(), loadOccupancy()]);
+  } catch (err) {
+    if (err.status === 409) {
+      outcomeEl.innerHTML = "";
+      const box = el(`<div class="callout error"></div>`);
+      box.textContent = "That slot just became unavailable. ";
+      const findBtn = el(`<button class="agent" style="margin-left: 0.4rem;">Ask agent for alternatives</button>`);
+      findBtn.onclick = () =>
+        findAlternatives(
+          payload.table_id,
+          { date: payload.date, hour: payload.hour, minute: payload.minute, duration: payload.duration_minutes, partySize: personCount },
+          outcomeEl,
+          "Move here instead",
+          (suggestion) =>
+            submitModifyRequest(
+              reservationId,
+              {
+                table_id: suggestion.table_id,
+                date: suggestion.date,
+                hour: suggestion.hour,
+                minute: suggestion.minute,
+                duration_minutes: suggestion.duration_minutes,
+              },
+              personCount,
+              outcomeEl
+            )
+        );
+      box.appendChild(findBtn);
+      outcomeEl.appendChild(box);
+    } else {
+      setReasoning(outcomeEl, "callout error", err.message);
+    }
+  }
 }
 
 async function actOnReservation(id, action) {
@@ -365,7 +404,16 @@ async function book(tableId, request) {
       const box = el(`<div class="callout error"></div>`);
       box.textContent = "That slot just became unavailable. ";
       const findBtn = el(`<button class="agent" style="margin-left: 0.4rem;">Ask agent for alternatives</button>`);
-      findBtn.onclick = () => findAlternatives(tableId, request, outcomeEl);
+      findBtn.onclick = () =>
+        findAlternatives(tableId, request, outcomeEl, "Book this instead", (suggestion) =>
+          book(suggestion.table_id, {
+            date: suggestion.date,
+            hour: suggestion.hour,
+            minute: suggestion.minute,
+            duration: suggestion.duration_minutes,
+            partySize: request.partySize,
+          })
+        );
       box.appendChild(findBtn);
       outcomeEl.appendChild(box);
     } else {
@@ -374,7 +422,12 @@ async function book(tableId, request) {
   }
 }
 
-async function findAlternatives(tableId, request, container) {
+// Shared by a failed new booking and a failed reservation edit, both
+// hit the same 409 for the same reason, a slot that's taken. Only what
+// happens when the suggestion is accepted differs (create a new
+// reservation vs. move an existing one), so that's the one thing the
+// caller supplies rather than this function assuming which.
+async function findAlternatives(tableId, request, container, acceptLabel, onAccept) {
   setReasoning(container, "callout suggest", "Asking the agent…");
   try {
     const suggestion = await api("/agent/find-alternatives", {
@@ -396,16 +449,10 @@ async function findAlternatives(tableId, request, container) {
     container.innerHTML = "";
     const box = el(`<div class="callout agent-result"></div>`);
     box.textContent = suggestion.reasoning + " ";
-    const bookBtn = el(`<button class="agent" style="margin-left: 0.4rem;">Book this instead</button>`);
-    bookBtn.onclick = () =>
-      book(suggestion.table_id, {
-        date: suggestion.date,
-        hour: suggestion.hour,
-        minute: suggestion.minute,
-        duration: suggestion.duration_minutes,
-        partySize: request.partySize,
-      });
-    box.appendChild(bookBtn);
+    const acceptBtn = el(`<button class="agent" style="margin-left: 0.4rem;"></button>`);
+    acceptBtn.textContent = acceptLabel;
+    acceptBtn.onclick = () => onAccept(suggestion);
+    box.appendChild(acceptBtn);
     container.appendChild(box);
   } catch (err) {
     setReasoning(container, "callout error", err.message);

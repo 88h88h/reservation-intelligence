@@ -12,6 +12,7 @@ let demoCreatedReservationIds = [];
 let demoCreatedOfferId = null;
 let demoLastOfferStatus = null;
 let demoAltBookingInfo = null;
+let demoSecondReservationId = null;
 let demoDate = null;
 
 function pickDemoDate() {
@@ -35,6 +36,7 @@ async function submitAvailabilityForm(time, party) {
 
 function buildStaffSteps() {
   const table1Name = "Table 1"; // window, capacity 2, min 1
+  const table2Name = "Table 2"; // standard, capacity 4, min 2
   const table4Name = "Table 4"; // patio, capacity 6, min 4
 
   return [
@@ -91,50 +93,71 @@ function buildStaffSteps() {
       },
     },
     {
-      caption: "This is that guarantee from the intro getting tested directly: someone else trying to book that exact same table and time, at the same moment.",
+      caption: "Let's also book Table 2, a different table, for 8 PM, we'll use it to test an edit next.",
       action: async () => {
-        const outcomeEl = document.getElementById("booking-outcome");
-        Demo.highlight(outcomeEl);
-        outcomeEl.innerHTML = `<div class="callout suggest">Simulating a second request for Table 1, 7 PM, right now&hellip;</div>`;
-        await Demo.sleep(1400);
-        const table1Id = tablesCache.find((t) => t.name === table1Name)?.id;
-        await book(table1Id, { date: demoDate, hour: 19, minute: 0, duration: 60, partySize: 2 });
-        await Demo.waitFor(() => document.getElementById("booking-outcome").textContent.includes("just became unavailable"));
+        Demo.highlight(document.getElementById("availability-form"));
+        await submitAvailabilityForm("20:00", 2);
+        const row = await Demo.waitFor(() =>
+          Demo.findRowByTitleSubstring(document.getElementById("availability-results"), table2Name)
+        );
+        await Demo.clickWithFeedback(row?.querySelector("button.primary"));
+        await Demo.waitFor(() => document.getElementById("booking-outcome").textContent.includes("Booked as HELD"));
+        const reservations = await api(`/restaurants/${restaurantId}/reservations`);
+        const table2Id = tablesCache.find((t) => t.name === table2Name)?.id;
+        const match = reservations.find((r) => r.table_id === table2Id && r.status === "HELD");
+        if (match) {
+          demoCreatedReservationIds.push(match.id);
+          demoSecondReservationId = match.id;
+        }
       },
     },
     {
-      caption: "Rejected, that table's genuinely taken. Now the agent steps in to suggest an alternative instead of just failing.",
+      caption: "This is that guarantee from the intro getting tested directly: editing this second reservation to Table 1's exact 7 PM slot, already taken.",
       action: async () => {
-        const btn = document.getElementById("booking-outcome").querySelector("button.agent");
+        const row = document.getElementById("reservations-list").querySelector(".row");
+        Demo.highlight(row);
+        const editBtn = Array.from(row?.querySelectorAll("button") || []).find((b) => b.textContent === "Edit");
+        await Demo.clickWithFeedback(editBtn);
+        const form = await Demo.waitFor(() => document.querySelector("form.edit-form"));
+        const table1Id = tablesCache.find((t) => t.name === table1Name)?.id;
+        await Demo.setFieldWithEmphasis(form.querySelector(".edit-table"), table1Id);
+        await Demo.setFieldWithEmphasis(form.querySelector(".edit-date"), demoDate);
+        await Demo.setFieldWithEmphasis(form.querySelector(".edit-time"), "19:00");
+        await Demo.clickWithFeedback(form.querySelector('button[type="submit"]'));
+        await Demo.waitFor(() => form.querySelector(".edit-outcome")?.textContent.includes("just became unavailable"));
+      },
+    },
+    {
+      caption: "Rejected, same guarantee, just triggered through a real edit this time. Let's ask the agent for an alternative.",
+      action: async () => {
+        const outcome = document.querySelector("form.edit-form .edit-outcome");
+        const btn = outcome?.querySelector("button.agent");
         await Demo.clickWithFeedback(btn);
-        await Demo.waitFor(() => document.getElementById("booking-outcome").querySelector(".callout.agent-result, .callout.error"));
+        await Demo.waitFor(() => outcome?.querySelector(".callout.agent-result, .callout.error"));
       },
     },
     {
       caption: () => {
         if (!demoAltBookingInfo) {
-          return "It found an alternative that fits. Let's accept it.";
+          return "It found an alternative that fits. Let's move the reservation there.";
         }
         const { tableName, basePrice, actualPrice } = demoAltBookingInfo;
         return actualPrice > basePrice
-          ? `Booked ${tableName} at $${actualPrice.toFixed(2)}, a bit above its usual $${basePrice.toFixed(2)}, since demand for this time just went up.`
-          : `Booked ${tableName} at its usual price, $${actualPrice.toFixed(2)}.`;
+          ? `Moved to ${tableName} at $${actualPrice.toFixed(2)}, a bit above its usual $${basePrice.toFixed(2)}, since demand for this time just went up.`
+          : `Moved to ${tableName} at its usual price, $${actualPrice.toFixed(2)}.`;
       },
       action: async () => {
+        const outcome = document.querySelector("form.edit-form .edit-outcome");
         const btn = await Demo.waitFor(() =>
-          Array.from(document.getElementById("booking-outcome").querySelectorAll("button")).find((b) =>
-            b.textContent.includes("Book this instead")
-          )
+          Array.from(outcome?.querySelectorAll("button") || []).find((b) => b.textContent.includes("Move here instead"))
         );
         if (!btn) return;
         await Demo.clickWithFeedback(btn);
-        await Demo.waitFor(() => document.getElementById("booking-outcome").textContent.includes("Booked as HELD"));
-        const reservations = await api(`/restaurants/${restaurantId}/reservations`);
-        const latest = reservations[0];
-        if (latest) {
-          demoCreatedReservationIds.push(latest.id);
-          const table = tablesCache.find((t) => t.id === latest.table_id);
-          demoAltBookingInfo = { tableName: table?.name || `Table ${latest.table_id}`, basePrice: table?.base_price ?? 0, actualPrice: latest.price };
+        await Demo.waitFor(() => !document.querySelector("form.edit-form"));
+        if (demoSecondReservationId) {
+          const updated = await api(`/reservations/${demoSecondReservationId}`);
+          const table = tablesCache.find((t) => t.id === updated.table_id);
+          demoAltBookingInfo = { tableName: table?.name || `Table ${updated.table_id}`, basePrice: table?.base_price ?? 0, actualPrice: updated.price };
         }
       },
     },
