@@ -86,6 +86,48 @@ pytest
 
 ## Architecture
 
+```mermaid
+graph TD
+    subgraph Frontend["Two frontends, same backend"]
+        Staff["Staff dashboard<br/>index.html + app.js"]
+        Diner["Diner pages<br/>dine-list.html + dine.html"]
+    end
+
+    subgraph Backend["FastAPI backend"]
+        Routers["Routers<br/>restaurants / reservations / offers / agent"]
+        Services["Services<br/>business rules, transaction boundaries"]
+        Repos["Repositories<br/>raw SQL, one function per operation"]
+        Agent["Reservation Operations Agent<br/>LLM tool-calling"]
+        Skills["Skills 1-3<br/>find alternatives, min-party override, recommend offer"]
+        Sweep["Background sweep<br/>releases expired HELD holds"]
+    end
+
+    DB[("SQLite<br/>reservation.db")]
+    LLM["Gemini<br/>langchain_google_genai"]
+
+    Staff -->|fetch| Routers
+    Diner -->|fetch| Routers
+    Routers --> Services
+    Routers -->|"free-text situation"| Agent
+    Agent -->|"picks one tool"| Skills
+    Services --> Repos
+    Skills --> Repos
+    Skills -->|"structured output call"| LLM
+    Repos --> DB
+    Sweep --> Services
+```
+
+Two things worth calling out visually: routers never write directly, they call into Services, which
+own transaction boundaries, before anything reaches SQLite. Skills sit slightly outside that layering
+on purpose, they call Repositories directly (the only place SQL lives) to gather the context they
+reason over, and skill 3 specifically, the one skill that writes anything, inserts its offer the same
+way, straight through the repository, not routed back through Services. A real, minor asymmetry
+worth naming rather than glossing over: skills 1 and 2 never mutate anything (pure reads, a
+suggestion is the only output), so it never came up for them, and skill 3's own write is a single
+`INSERT` with no multi-step transaction to coordinate, unlike the booking flow's atomic multi-slot
+claim, so the gap has never actually mattered in practice, but it is a real inconsistency, not a
+deliberate design choice.
+
 - `app/database.py`: SQLite connection handling, schema definition, and the
   `transaction()` context manager used everywhere a write needs to be atomic.
 - `app/repositories/`: raw data access, one function per operation, no
