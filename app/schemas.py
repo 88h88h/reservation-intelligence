@@ -18,6 +18,14 @@ class CreateReservationRequest(BaseModel):
     idempotency_key: str
 
 
+class ModifyReservationRequest(BaseModel):
+    table_id: int
+    date: str  # "YYYY-MM-DD"
+    hour: int
+    minute: int
+    duration_minutes: int
+
+
 class ReservationResponse(BaseModel):
     id: int
     status: str

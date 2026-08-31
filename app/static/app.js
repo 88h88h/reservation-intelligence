@@ -139,8 +139,104 @@ async function loadReservations() {
       cancelBtn.onclick = () => actOnReservation(r.id, "cancel");
       actions.appendChild(cancelBtn);
     }
+    if (r.status === "HELD" || r.status === "CONFIRMED") {
+      const editBtn = el(`<button>Edit</button>`);
+      editBtn.onclick = () => toggleReservationEditForm(row, r);
+      actions.appendChild(editBtn);
+    }
     list.appendChild(row);
   });
+}
+
+// A reservation's date/time/duration is never stored directly on the
+// row (see fmtBookingWindow), it's derived from slot_claim, so editing
+// it isn't a partial-field PATCH, it's a full move to a new table/
+// slot, handled atomically by POST /reservations/{id}/modify: the old
+// slots are released and the new ones claimed inside one transaction,
+// so a conflict on the new slot leaves the reservation exactly as it
+// was, not half-moved.
+function toggleReservationEditForm(row, r) {
+  const existing = row.nextElementSibling;
+  if (existing && existing.classList.contains("edit-form")) {
+    existing.remove();
+    return;
+  }
+  document.querySelectorAll(".edit-form").forEach((f) => f.remove());
+
+  const form = el(`
+    <form class="edit-form stacked">
+      <div class="field-row">
+        <div>
+          <label>Table</label>
+          <select class="edit-table"></select>
+        </div>
+        <div>
+          <label>Date</label>
+          <input type="date" class="edit-date" required />
+        </div>
+      </div>
+      <div class="field-row">
+        <div>
+          <label>Time</label>
+          <input type="time" class="edit-time" step="900" required />
+        </div>
+        <div>
+          <label>Duration (minutes)</label>
+          <select class="edit-duration">
+            <option value="30">30</option>
+            <option value="45">45</option>
+            <option value="60">60</option>
+            <option value="90">90</option>
+            <option value="120">120</option>
+          </select>
+        </div>
+      </div>
+      <div class="edit-form-actions">
+        <button type="submit" class="primary">Save changes</button>
+        <button type="button" class="edit-cancel-btn">Never mind</button>
+      </div>
+      <div class="edit-outcome"></div>
+    </form>
+  `);
+
+  const tableSelect = form.querySelector(".edit-table");
+  tablesCache.forEach((t) => {
+    const opt = document.createElement("option");
+    opt.value = t.id;
+    opt.textContent = t.name;
+    if (t.id === r.table_id) opt.selected = true;
+    tableSelect.appendChild(opt);
+  });
+  form.querySelector(".edit-date").value = r.booking_date || "";
+  form.querySelector(".edit-time").value =
+    r.start_hour != null ? `${String(r.start_hour).padStart(2, "0")}:${String(r.start_minute).padStart(2, "0")}` : "";
+  form.querySelector(".edit-duration").value = String(r.duration_minutes || 60);
+
+  form.querySelector(".edit-cancel-btn").onclick = () => form.remove();
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const outcome = form.querySelector(".edit-outcome");
+    setReasoning(outcome, "callout suggest", "Saving…");
+    const [hourStr, minuteStr] = form.querySelector(".edit-time").value.split(":");
+    try {
+      await api(`/reservations/${r.id}/modify`, {
+        method: "POST",
+        body: JSON.stringify({
+          table_id: Number(tableSelect.value),
+          date: form.querySelector(".edit-date").value,
+          hour: Number(hourStr),
+          minute: Number(minuteStr),
+          duration_minutes: Number(form.querySelector(".edit-duration").value),
+        }),
+      });
+      await Promise.all([loadReservations(), loadOccupancy()]);
+    } catch (err) {
+      setReasoning(outcome, "callout error", err.message);
+    }
+  });
+
+  row.after(form);
 }
 
 async function actOnReservation(id, action) {

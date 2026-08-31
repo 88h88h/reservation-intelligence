@@ -101,6 +101,18 @@ def update_status(conn: sqlite3.Connection, reservation_id: int, status: str) ->
     conn.execute("UPDATE reservation SET status = ? WHERE id = ?", (status, reservation_id))
 
 
+def update_table_and_price(conn: sqlite3.Connection, reservation_id: int, *, table_id: int, price: float) -> None:
+    """The reservation's date/time/duration are never stored directly
+    (derived from slot_claim, see get_by_id), so modifying them is just
+    replacing slot_claim rows, only table_id and price actually live on
+    the reservation row itself.
+    """
+    conn.execute(
+        "UPDATE reservation SET table_id = ?, price = ? WHERE id = ?",
+        (table_id, price, reservation_id),
+    )
+
+
 def count_tables_claimed_at_slots(
     conn: sqlite3.Connection, *, restaurant_id: int, date: str, slot_indices: list[int], status: str
 ) -> int:

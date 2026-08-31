@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from app.schemas import CreateReservationRequest, ReservationResponse
+from app.schemas import CreateReservationRequest, ModifyReservationRequest, ReservationResponse
 from app.services import reservation_service
 from app.repositories import reservation_repo
 from app.database import get_connection
@@ -36,6 +36,18 @@ def confirm_reservation(reservation_id: int):
         # asked for. Anything else (CANCELLED/EXPIRED): a genuinely
         # invalid transition, not something to report as success.
         raise HTTPException(status_code=409, detail=f"cannot confirm a reservation with status {reservation['status']}")
+    return ReservationResponse.from_row(reservation)
+
+
+@router.post("/{reservation_id}/modify", response_model=ReservationResponse)
+def modify_reservation(reservation_id: int, request: ModifyReservationRequest):
+    reservation, error = reservation_service.modify_reservation(reservation_id, **request.model_dump())
+    if error == "not_found":
+        raise HTTPException(status_code=404, detail="reservation not found")
+    if error == "not_modifiable":
+        raise HTTPException(status_code=409, detail=f"cannot modify a reservation with status {reservation['status']}")
+    if error == "conflict":
+        raise HTTPException(status_code=409, detail="the requested table/time is no longer available")
     return ReservationResponse.from_row(reservation)
 
 

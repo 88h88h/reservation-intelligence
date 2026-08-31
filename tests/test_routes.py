@@ -239,6 +239,134 @@ def test_reservation_response_includes_actual_booking_window(client):
     assert after_cancel["duration_minutes"] is None
 
 
+def test_modify_reservation_moves_to_new_table_and_time(client):
+    restaurant_id, tables = _seeded_ids(client)
+    table_a, table_b = tables[0]["id"], tables[1]["id"]
+
+    create = client.post(
+        "/reservations",
+        json={
+            "restaurant_id": restaurant_id,
+            "table_id": table_a,
+            "user_id": 1,
+            "person_count": 2,
+            "date": DATE,
+            "hour": 19,
+            "minute": 0,
+            "duration_minutes": 60,
+            "idempotency_key": "modify-route-key",
+        },
+    ).json()
+
+    modify = client.post(
+        f"/reservations/{create['id']}/modify",
+        json={"table_id": table_b, "date": DATE, "hour": 20, "minute": 0, "duration_minutes": 60},
+    )
+    assert modify.status_code == 200
+    body = modify.json()
+    assert body["table_id"] == table_b
+    assert body["start_hour"] == 20
+
+    # The original table/time is genuinely free again, a fresh booking there succeeds.
+    reclaim = client.post(
+        "/reservations",
+        json={
+            "restaurant_id": restaurant_id,
+            "table_id": table_a,
+            "user_id": 1,
+            "person_count": 2,
+            "date": DATE,
+            "hour": 19,
+            "minute": 0,
+            "duration_minutes": 60,
+            "idempotency_key": "modify-reclaim-key",
+        },
+    )
+    assert reclaim.status_code == 201
+
+
+def test_modify_reservation_not_found_returns_404(client):
+    response = client.post(
+        "/reservations/999/modify",
+        json={"table_id": 1, "date": DATE, "hour": 19, "minute": 0, "duration_minutes": 60},
+    )
+    assert response.status_code == 404
+
+
+def test_modify_cancelled_reservation_returns_409(client):
+    restaurant_id, tables = _seeded_ids(client)
+    table_id = tables[0]["id"]
+
+    create = client.post(
+        "/reservations",
+        json={
+            "restaurant_id": restaurant_id,
+            "table_id": table_id,
+            "user_id": 1,
+            "person_count": 2,
+            "date": DATE,
+            "hour": 19,
+            "minute": 0,
+            "duration_minutes": 60,
+            "idempotency_key": "modify-cancelled-route-key",
+        },
+    ).json()
+    client.post(f"/reservations/{create['id']}/cancel")
+
+    response = client.post(
+        f"/reservations/{create['id']}/modify",
+        json={"table_id": table_id, "date": DATE, "hour": 20, "minute": 0, "duration_minutes": 60},
+    )
+    assert response.status_code == 409
+
+
+def test_modify_reservation_conflict_returns_409(client):
+    restaurant_id, tables = _seeded_ids(client)
+    table_a, table_b = tables[0]["id"], tables[1]["id"]
+
+    moving = client.post(
+        "/reservations",
+        json={
+            "restaurant_id": restaurant_id,
+            "table_id": table_a,
+            "user_id": 1,
+            "person_count": 2,
+            "date": DATE,
+            "hour": 19,
+            "minute": 0,
+            "duration_minutes": 60,
+            "idempotency_key": "modify-conflict-moving-key",
+        },
+    ).json()
+    blocker = client.post(
+        "/reservations",
+        json={
+            "restaurant_id": restaurant_id,
+            "table_id": table_b,
+            "user_id": 1,
+            "person_count": 2,
+            "date": DATE,
+            "hour": 20,
+            "minute": 0,
+            "duration_minutes": 60,
+            "idempotency_key": "modify-conflict-blocker-key",
+        },
+    )
+    assert blocker.status_code == 201
+    client.post(f"/reservations/{blocker.json()['id']}/confirm")
+
+    response = client.post(
+        f"/reservations/{moving['id']}/modify",
+        json={"table_id": table_b, "date": DATE, "hour": 20, "minute": 0, "duration_minutes": 60},
+    )
+    assert response.status_code == 409
+
+    # Untouched: still on its original table and time.
+    after = client.get(f"/reservations/{moving['id']}").json()
+    assert after["table_id"] == table_a
+    assert after["start_hour"] == 19
+
+
 def test_confirm_then_cancel_flow(client):
     restaurant_id, tables = _seeded_ids(client)
     table_id = tables[0]["id"]

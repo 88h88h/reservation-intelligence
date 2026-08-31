@@ -144,6 +144,57 @@ def create_reservation(
         conn.close()
 
 
+def modify_reservation(
+    reservation_id: int,
+    *,
+    table_id: int,
+    date: str,
+    hour: int,
+    minute: int,
+    duration_minutes: int,
+) -> tuple[sqlite3.Row | None, str | None]:
+    """Move a HELD or CONFIRMED reservation to a different table and/or
+    time, atomically: release its current slots and claim the new ones
+    inside one transaction, so a conflict on the new slots rolls back
+    the whole thing, the reservation is left exactly as it was, never
+    half-moved (unlike cancel-then-rebook as two separate requests,
+    which can genuinely lose the table if the second step fails).
+
+    Price is recomputed for the new slot: price reflects demand for a
+    specific date/time, carrying the old number forward would describe
+    demand for a slot the reservation no longer holds.
+
+    Returns (row, error). error is None on success, otherwise one of
+    "not_found", "not_modifiable" (already CANCELLED/EXPIRED, nothing
+    to move), or "conflict" (the requested slots are already taken and
+    not reclaimable). The row reflects the reservation's actual current
+    state either way.
+    """
+    conn = get_connection()
+    try:
+        existing = reservation_repo.get_by_id(conn, reservation_id)
+        if existing is None:
+            return None, "not_found"
+        if existing["status"] not in ("HELD", "CONFIRMED"):
+            return existing, "not_modifiable"
+
+        slot_indices = compute_slot_indices(hour, minute, duration_minutes)
+        try:
+            with transaction(conn):
+                reservation_repo.delete_slot_claims(conn, reservation_id)
+                price = pricing_service.calculate_price(
+                    conn, restaurant_id=existing["restaurant_id"], table_id=table_id, date=date, slot_indices=slot_indices
+                )
+                reservation_repo.update_table_and_price(conn, reservation_id, table_id=table_id, price=price)
+                _claim_slots_with_reclaim(conn, reservation_id, table_id, date, slot_indices)
+        except sqlite3.IntegrityError:
+            return reservation_repo.get_by_id(conn, reservation_id), "conflict"
+
+        return reservation_repo.get_by_id(conn, reservation_id), None
+    finally:
+        conn.close()
+
+
 def _claim_slots_with_reclaim(conn, reservation_id: int, table_id: int, date: str, slot_indices: list[int]) -> None:
     """Insert one SlotClaim per slot. If a slot is blocked by a HELD
     reservation already past its own expiry, release it inline and

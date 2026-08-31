@@ -139,11 +139,18 @@ pytest
   (occupied/total table counts, ratio, and a diner-facing vibe label),
   `GET /users`: browsing.
 - `POST /reservations`, `GET /reservations/{id}`,
-  `POST /reservations/{id}/confirm`, `POST /reservations/{id}/cancel`: booking
-  lifecycle. Every reservation response includes the actual booked
+  `POST /reservations/{id}/confirm`, `POST /reservations/{id}/cancel`,
+  `POST /reservations/{id}/modify`: booking lifecycle. Every reservation
+  response includes the actual booked
   `booking_date`/`start_hour`/`start_minute`/`duration_minutes`, derived
   fresh from `slot_claim` on every read, not stored redundantly, `null` once
   a reservation is cancelled or expired and no longer holds any slot.
+  `modify` moves a `HELD`/`CONFIRMED` reservation to a different table and/or
+  time atomically, releasing its current slots and claiming the new ones
+  inside one transaction, so a conflict on the new slot rolls back the whole
+  move and leaves the reservation exactly as it was, rather than the real
+  gap in "cancel, then rebook" as two separate requests, a failed rebook
+  step there would leave the reservation cancelled with no replacement.
 - `POST /agent/find-alternatives`: skill 1, suggests an alternative table or
   time after a failed booking attempt.
 - `POST /agent/evaluate-min-party-override`: skill 2, evaluates whether to
