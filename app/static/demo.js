@@ -42,11 +42,11 @@ function buildStaffSteps() {
 
   return [
     {
-      caption: "This is Reservation Intelligence, a restaurant booking platform with an AI agent layer that helps staff make decisions. Let's walk through it.",
+      caption: "Here's the staff dashboard.",
       action: async () => Demo.highlight(document.querySelector("header.topbar")),
     },
     {
-      caption: "One quick thing to know going in: every booking is split into 15-minute time slots behind the scenes. That's what makes double-booking truly impossible, more on that after the demo.",
+      caption: "Remember those 15-minute slots from a moment ago? You'll see that guarantee play out here.",
       action: async () => Demo.highlight(document.getElementById("tables-grid").closest(".card")),
     },
     {

@@ -16,31 +16,24 @@ recording an explanation video, see Demo mode below.
 
 `/`, `/dine`, and `/dine/{id}` each have a "Run Demo" button that drives the
 real UI end to end, real typed text, real button presses, real API calls,
-nothing staged. Captions stay short and plain, stating what's happening and
-why it matters in a sentence, not the full engineering justification behind
-it, that depth is meant for a separate talking-head explanation recorded
-after, not narrated live over the mouse. The staff demo opens with a brief
-intro before anything starts happening, covers a happy-path booking, a genuine
-conflict triggered through a real edit to an already-taken slot (skill 1
-suggesting, and moving the reservation to, an alternative), an
-under-minimum party size (skill 2), the promo recommendation (skill 3,
-reacting live to whatever it actually decides), the free-text agent panel
-routing correctly, and a cancellation, then navigates into the diner-facing
-side, starting with the restaurant browse list, the actual demonstration of
-comparing real, seeded occupancy differences across restaurants, before
-continuing into one restaurant's page. There, a diner deliberately tries to
-book the exact table and time staff just confirmed on the other dashboard,
-a genuine collision carried across the page navigation (not two disconnected
-recordings), showing the same skill 1 alternative-suggestion flow from the
-diner's own side this time, live occupancy, active offers, and booking round
-out the page. A control panel (pause/next/speed/restart/hide) lets the pace follow
-your narration rather than a fixed timer. Reaching the end, or
-"Restart"/"Close", all clean up everything the run created, reservations
-cancelled, any offer it generated deleted outright (offers have no
-cancel-equivalent, so a genuine delete exists for this, used only by demo
-cleanup, never by normal offer management), so it can be rehearsed as many
-times as needed before recording for real, with no leftover clutter between
-runs.
+nothing staged. It walks through a happy-path booking, a genuine conflict
+triggered through a real edit to an already-taken slot (skill 1 suggesting,
+and moving the reservation to, an alternative), an under-minimum party size
+(skill 2), the promo recommendation (skill 3, reacting live to whatever it
+actually decides), the free-text agent panel routing correctly, and a
+cancellation, then continues into the diner-facing side, starting with the
+restaurant browse list, comparing real, seeded occupancy differences across
+restaurants, before continuing into one restaurant's page. There, a diner
+tries to book the exact table and time staff just confirmed on the other
+dashboard, a genuine collision carried across the page navigation, showing
+the same skill 1 alternative-suggestion flow from the diner's own side, then
+live occupancy, active offers, and booking round out the page. A control
+panel (pause/next/speed/restart/hide) lets you control the pace. Reaching
+the end, or "Restart"/"Close", cleans up everything the run created,
+reservations cancelled, any offer it generated deleted outright (offers have
+no cancel-equivalent, so a genuine delete exists for this, used only by demo
+cleanup, never by normal offer management), so it's always repeatable, with
+no leftover clutter between runs.
 
 ## Requirements
 
