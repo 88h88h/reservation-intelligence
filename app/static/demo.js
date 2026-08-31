@@ -13,6 +13,7 @@ let demoCreatedOfferId = null;
 let demoLastOfferStatus = null;
 let demoAltBookingInfo = null;
 let demoSecondReservationId = null;
+let demoEditOutcomeEl = null;
 let demoDate = null;
 
 function pickDemoDate() {
@@ -119,21 +120,27 @@ function buildStaffSteps() {
         const editBtn = Array.from(row?.querySelectorAll("button") || []).find((b) => b.textContent === "Edit");
         await Demo.clickWithFeedback(editBtn);
         const form = await Demo.waitFor(() => document.querySelector("form.edit-form"));
+        // Captured once, right here, before it's ever touched: submitting
+        // the form restyles this exact element (setReasoning replaces its
+        // className outright), which would silently break any later
+        // lookup by its "edit-outcome" class. Holding the node itself
+        // sidesteps that instead of re-querying for a class that's about
+        // to disappear.
+        demoEditOutcomeEl = form.querySelector(".edit-outcome");
         const table1Id = tablesCache.find((t) => t.name === table1Name)?.id;
         await Demo.setFieldWithEmphasis(form.querySelector(".edit-table"), table1Id);
         await Demo.setFieldWithEmphasis(form.querySelector(".edit-date"), demoDate);
         await Demo.setFieldWithEmphasis(form.querySelector(".edit-time"), "19:00");
         await Demo.clickWithFeedback(form.querySelector('button[type="submit"]'));
-        await Demo.waitFor(() => form.querySelector(".edit-outcome")?.textContent.includes("just became unavailable"));
+        await Demo.waitFor(() => demoEditOutcomeEl.textContent.includes("just became unavailable"));
       },
     },
     {
       caption: "Rejected, same guarantee, just triggered through a real edit this time. Let's ask the agent for an alternative.",
       action: async () => {
-        const outcome = document.querySelector("form.edit-form .edit-outcome");
-        const btn = outcome?.querySelector("button.agent");
+        const btn = demoEditOutcomeEl?.querySelector("button.agent");
         await Demo.clickWithFeedback(btn);
-        await Demo.waitFor(() => outcome?.querySelector(".callout.agent-result, .callout.error"));
+        await Demo.waitFor(() => demoEditOutcomeEl?.querySelector(".callout.agent-result, .callout.error"));
       },
     },
     {
@@ -147,13 +154,13 @@ function buildStaffSteps() {
           : `Moved to ${tableName} at its usual price, $${actualPrice.toFixed(2)}.`;
       },
       action: async () => {
-        const outcome = document.querySelector("form.edit-form .edit-outcome");
         const btn = await Demo.waitFor(() =>
-          Array.from(outcome?.querySelectorAll("button") || []).find((b) => b.textContent.includes("Move here instead"))
+          Array.from(demoEditOutcomeEl?.querySelectorAll("button") || []).find((b) => b.textContent.includes("Move here instead"))
         );
         if (!btn) return;
         await Demo.clickWithFeedback(btn);
         await Demo.waitFor(() => !document.querySelector("form.edit-form"));
+        demoEditOutcomeEl = null;
         if (demoSecondReservationId) {
           const updated = await api(`/reservations/${demoSecondReservationId}`);
           const table = tablesCache.find((t) => t.id === updated.table_id);
@@ -312,6 +319,8 @@ document.addEventListener("DOMContentLoaded", () => {
       demoCreatedReservationIds = [];
       demoCreatedOfferId = null;
       demoAltBookingInfo = null;
+      demoSecondReservationId = null;
+      demoEditOutcomeEl = null;
       Demo.start(buildStaffSteps(), resetStaffDemo, 7000);
     };
   }
