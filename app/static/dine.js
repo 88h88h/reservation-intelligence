@@ -152,7 +152,7 @@ function renderResults(tables, request) {
       <div class="diner-table-card" style="margin-bottom: 0.6rem;">
         <div class="main">
           <div class="title">${t.name} <span class="type-tag">${t.type || "standard"}</span></div>
-          <div class="subtitle">Seats up to ${t.capacity} &middot; ${fmtMoney(t.base_price)}</div>
+          <div class="subtitle">Seats up to ${t.capacity} &middot; <span class="price">${fmtMoney(t.base_price)}</span></div>
         </div>
         <div class="actions"></div>
       </div>

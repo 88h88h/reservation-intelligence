@@ -111,7 +111,11 @@ pytest
   for it, and serves the dashboard.
 - `app/static/`: two separate frontends, plain HTML/CSS/vanilla JS, no build
   step. `index.html`/`app.js` is the staff dashboard, dense, wide, an ops
-  tool; the agent surfaces in context rather than as a separate playground:
+  tool, with a sticky left nav (new reservation, reservations, tables,
+  menu & offers, agent) that smooth-scrolls to and highlights whichever
+  section is in view, so any section is one click away without hunting
+  through the page; the agent surfaces in context rather than as a
+  separate playground:
   skill 1 appears inline when a booking attempt just failed, skill 2 appears
   inline next to a table flagged below its minimum party size, skill 3 has a
   direct "recommend a promo" action in the offers section, and a free-text

@@ -95,7 +95,7 @@ async function loadTables() {
         <div class="name">${t.name}</div>
         <span class="type-tag">${t.type || "standard"}</span>
         <div class="meta">seats ${t.capacity} &middot; min ${t.min_party_size}</div>
-        <div class="meta">${fmtMoney(t.base_price)} base${t.is_bookable ? "" : " &middot; closed"}</div>
+        <div class="meta"><span class="price">${fmtMoney(t.base_price)}</span> base${t.is_bookable ? "" : " &middot; closed"}</div>
       </div>
     `)
     );
@@ -120,7 +120,7 @@ async function loadReservations() {
         <div class="main">
           <div class="title">${table ? table.name : "Table " + r.table_id} &middot; ${r.person_count} guests</div>
           <div class="subtitle">${fmtBookingWindow(r)}</div>
-          <div class="subtitle">${fmtMoney(r.price)} &middot; created ${fmtDateTime(r.created_at)}</div>
+          <div class="subtitle"><span class="price">${fmtMoney(r.price)}</span> &middot; created ${fmtDateTime(r.created_at)}</div>
         </div>
         <span class="badge ${r.status}">${r.status}</span>
         <div class="actions"></div>
@@ -191,7 +191,7 @@ function renderAvailability(tables, request) {
       <div class="row">
         <div class="main">
           <div class="title">${t.name} <span class="type-tag">${t.type || "standard"}</span></div>
-          <div class="subtitle">seats ${t.capacity} &middot; min ${t.min_party_size} &middot; ${fmtMoney(t.base_price)} base</div>
+          <div class="subtitle">seats ${t.capacity} &middot; min ${t.min_party_size} &middot; <span class="price">${fmtMoney(t.base_price)}</span> base</div>
         </div>
         <div class="actions"></div>
       </div>
@@ -331,7 +331,7 @@ async function loadMenuItems() {
       <div class="row">
         <div class="main">
           <div class="title">${m.name}</div>
-          <div class="subtitle">${fmtMoney(m.price)} &middot; auto-approve up to ${fmtMoney(m.max_auto_discount)} off</div>
+          <div class="subtitle"><span class="price">${fmtMoney(m.price)}</span> &middot; auto-approve up to ${fmtMoney(m.max_auto_discount)} off</div>
         </div>
       </div>
     `)
@@ -374,7 +374,7 @@ async function loadOffers() {
     const row = el(`
       <div class="row">
         <div class="main">
-          <div class="title">${item ? item.name : "Item " + o.menu_item_id} &middot; ${fmtMoney(o.proposed_value)} off</div>
+          <div class="title">${item ? item.name : "Item " + o.menu_item_id} &middot; <span class="price">${fmtMoney(o.proposed_value)} off</span></div>
           <div class="subtitle">created ${fmtDateTime(o.created_at)}</div>
         </div>
         <span class="badge ${o.status}">${o.status}</span>
@@ -466,4 +466,29 @@ document.getElementById("agent-form").addEventListener("submit", async (e) => {
   }
 });
 
+// ---------- side nav (scroll-spy) ----------
+
+function initSideNav() {
+  const links = Array.from(document.querySelectorAll(".side-nav-link"));
+  const sections = links.map((link) => document.getElementById(link.dataset.target)).filter(Boolean);
+  if (!sections.length) return;
+
+  const setActive = (id) => {
+    links.forEach((link) => link.classList.toggle("active", link.dataset.target === id));
+  };
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      const visible = entries.filter((entry) => entry.isIntersecting);
+      if (!visible.length) return;
+      visible.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+      setActive(visible[0].target.id);
+    },
+    { rootMargin: "-15% 0px -70% 0px" }
+  );
+  sections.forEach((section) => observer.observe(section));
+  setActive(sections[0].id);
+}
+
+initSideNav();
 init();

@@ -6,7 +6,7 @@
   <title>Reservation Intelligence</title>
   <link rel="stylesheet" href="/static/style.css" />
 </head>
-<body>
+<body class="app-shell">
   <header class="topbar">
     <div class="topbar-inner">
       <div class="brand">
@@ -27,100 +27,110 @@
     </div>
   </header>
 
-  <main>
-    <section class="card">
-      <h2>Tables</h2>
-      <div id="tables-grid" class="table-grid skeleton">Loading…</div>
-    </section>
+  <div class="app-body">
+    <nav class="side-nav" id="side-nav">
+      <a href="#section-booking" class="side-nav-link" data-target="section-booking">New reservation</a>
+      <a href="#section-reservations" class="side-nav-link" data-target="section-reservations">Reservations</a>
+      <a href="#section-tables" class="side-nav-link" data-target="section-tables">Tables</a>
+      <a href="#section-menu" class="side-nav-link" data-target="section-menu">Menu &amp; offers</a>
+      <a href="#section-agent" class="side-nav-link" data-target="section-agent">Agent</a>
+    </nav>
 
-    <section class="card">
-      <h2>New reservation</h2>
-      <form id="availability-form" class="stacked">
-        <div class="field-row">
-          <div>
-            <label for="res-date">Date</label>
-            <input type="date" id="res-date" required />
-          </div>
-          <div>
-            <label for="res-time">Time</label>
-            <input type="time" id="res-time" step="900" required />
-          </div>
-        </div>
-        <div class="field-row">
-          <div>
-            <label for="res-duration">Duration (minutes)</label>
-            <select id="res-duration">
-              <option value="30">30</option>
-              <option value="45">45</option>
-              <option value="60" selected>60</option>
-              <option value="90">90</option>
-              <option value="120">120</option>
-            </select>
-          </div>
-          <div>
-            <label for="res-party">Party size</label>
-            <input type="number" id="res-party" min="1" value="2" required />
-          </div>
-        </div>
-        <button type="submit" class="primary">Check availability</button>
-      </form>
-      <div id="availability-results"></div>
-      <div id="booking-outcome"></div>
-    </section>
-
-    <section class="card">
-      <h2>Reservations</h2>
-      <div id="reservations-list" class="list skeleton">Loading…</div>
-    </section>
-
-    <section class="card">
-      <h2>Menu &amp; offers</h2>
-
-      <div class="subsection">
-        <div class="subsection-label">Menu</div>
-        <div id="menu-items-list" class="list-compact skeleton">Loading…</div>
-      </div>
-
-      <div class="subsection">
-        <div class="subsection-label">Create an offer</div>
-        <button type="button" id="recommend-offer-btn" class="agent block">Ask agent for a promo recommendation</button>
-        <div id="offer-recommendation-outcome"></div>
-        <p class="hint">Or set one up directly, it goes live immediately:</p>
-        <form id="manual-offer-form" class="stacked">
+    <main>
+      <section class="card" id="section-booking">
+        <h2>New reservation</h2>
+        <form id="availability-form" class="stacked">
           <div class="field-row">
             <div>
-              <label for="offer-menu-item">Menu item</label>
-              <select id="offer-menu-item"></select>
+              <label for="res-date">Date</label>
+              <input type="date" id="res-date" required />
             </div>
             <div>
-              <label for="offer-amount">Discount ($)</label>
-              <input type="number" id="offer-amount" min="0" step="0.5" value="2" />
+              <label for="res-time">Time</label>
+              <input type="time" id="res-time" step="900" required />
             </div>
           </div>
-          <button type="submit">Run offer now</button>
+          <div class="field-row">
+            <div>
+              <label for="res-duration">Duration (minutes)</label>
+              <select id="res-duration">
+                <option value="30">30</option>
+                <option value="45">45</option>
+                <option value="60" selected>60</option>
+                <option value="90">90</option>
+                <option value="120">120</option>
+              </select>
+            </div>
+            <div>
+              <label for="res-party">Party size</label>
+              <input type="number" id="res-party" min="1" value="2" required />
+            </div>
+          </div>
+          <button type="submit" class="primary">Check availability</button>
         </form>
-      </div>
+        <div id="availability-results"></div>
+        <div id="booking-outcome"></div>
+      </section>
 
-      <div class="subsection">
-        <div class="subsection-label">Active &amp; pending offers</div>
-        <div id="offers-list" class="list skeleton">Loading…</div>
-      </div>
-    </section>
+      <section class="card" id="section-reservations">
+        <h2>Reservations</h2>
+        <div id="reservations-list" class="list skeleton">Loading…</div>
+      </section>
 
-    <section class="card agent-card full-width">
-      <h2><span class="tag">Agent</span> Reservation Operations Agent</h2>
-      <p class="hint">
-        Describe a situation in plain language, the agent decides which skill applies:
-        finding alternatives after a failed booking, evaluating a below-minimum party size,
-        or recommending a promotional offer when occupancy is low.
-      </p>
-      <form id="agent-form" class="stacked">
-        <textarea id="agent-situation" placeholder='e.g. "A party of 2 wants table 4 which needs 4 minimum, is that ok?"'></textarea>
-        <button type="submit" class="agent">Ask the agent</button>
-      </form>
-      <div id="agent-result"></div>
-    </section>
-  </main>
+      <section class="card card-reference" id="section-tables">
+        <h2>Tables</h2>
+        <div id="tables-grid" class="table-grid skeleton">Loading…</div>
+      </section>
+
+      <section class="card card-reference" id="section-menu">
+        <h2>Menu &amp; offers</h2>
+
+        <div class="subsection">
+          <div class="subsection-label">Menu</div>
+          <div id="menu-items-list" class="list-compact skeleton">Loading…</div>
+        </div>
+
+        <div class="subsection">
+          <div class="subsection-label">Create an offer</div>
+          <button type="button" id="recommend-offer-btn" class="agent block">Ask agent for a promo recommendation</button>
+          <div id="offer-recommendation-outcome"></div>
+          <p class="hint">Or set one up directly, it goes live immediately:</p>
+          <form id="manual-offer-form" class="stacked">
+            <div class="field-row">
+              <div>
+                <label for="offer-menu-item">Menu item</label>
+                <select id="offer-menu-item"></select>
+              </div>
+              <div>
+                <label for="offer-amount">Discount ($)</label>
+                <input type="number" id="offer-amount" min="0" step="0.5" value="2" />
+              </div>
+            </div>
+            <button type="submit">Run offer now</button>
+          </form>
+        </div>
+
+        <div class="subsection">
+          <div class="subsection-label">Active &amp; pending offers</div>
+          <div id="offers-list" class="list skeleton">Loading…</div>
+        </div>
+      </section>
+
+      <section class="card agent-card full-width" id="section-agent">
+        <h2><span class="tag">Agent</span> Reservation Operations Agent</h2>
+        <p class="hint">
+          Describe a situation in plain language, the agent decides which skill applies:
+          finding alternatives after a failed booking, evaluating a below-minimum party size,
+          or recommending a promotional offer when occupancy is low.
+        </p>
+        <form id="agent-form" class="stacked">
+          <textarea id="agent-situation" placeholder='e.g. "A party of 2 wants table 4 which needs 4 minimum, is that ok?"'></textarea>
+          <button type="submit" class="agent">Ask the agent</button>
+        </form>
+        <div id="agent-result"></div>
+      </section>
+    </main>
+  </div>
 
   <script src="/static/app.js"></script>
   <script src="/static/demo-common.js"></script>

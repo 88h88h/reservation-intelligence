@@ -47,7 +47,7 @@ function buildStaffSteps() {
       action: async () => Demo.highlight(document.getElementById("tables-grid").closest(".card")),
     },
     {
-      caption: "Quick heads-up: you'll see two different occupancy percentages during this demo. Both are correct, just answering slightly different questions, I'll explain after.",
+      caption: "Quick heads-up: you'll see two different occupancy percentages during this demo, for example one for how full the restaurant is right now, and a separate one for how full a specific future booking's time slot is. Both are correct, just answering different questions.",
       action: async () => Demo.highlight(document.getElementById("occupancy-pill")),
     },
     {
@@ -91,7 +91,7 @@ function buildStaffSteps() {
       },
     },
     {
-      caption: "Now let's simulate someone else trying to book that exact same table and time, at the same moment.",
+      caption: "This is that guarantee from the intro getting tested directly: someone else trying to book that exact same table and time, at the same moment.",
       action: async () => {
         const outcomeEl = document.getElementById("booking-outcome");
         Demo.highlight(outcomeEl);
@@ -139,7 +139,7 @@ function buildStaffSteps() {
       },
     },
     {
-      caption: "A different scenario now: what if a party is smaller than a table's minimum size?",
+      caption: "A different scenario now: a party of two, searching at a time when Table 4 normally needs at least four people.",
       action: async () => {
         Demo.highlight(document.getElementById("availability-form"));
         await submitAvailabilityForm("20:00", 2);
