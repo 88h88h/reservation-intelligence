@@ -27,12 +27,11 @@ def list_for_restaurant(conn: sqlite3.Connection, restaurant_id: int) -> list[sq
     ).fetchall()
 
 
-def update_status(conn: sqlite3.Connection, offer_id: int, status: str) -> int:
-    """Returns the number of rows actually changed, so callers can tell
-    a real transition from a no-op (e.g. approving an already-ACTIVE offer).
-    """
-    cursor = conn.execute("UPDATE offer SET status = ? WHERE id = ?", (status, offer_id))
-    return cursor.rowcount
+def update_value_and_status(conn: sqlite3.Connection, offer_id: int, *, proposed_value: float, status: str) -> None:
+    conn.execute(
+        "UPDATE offer SET proposed_value = ?, status = ? WHERE id = ?",
+        (proposed_value, status, offer_id),
+    )
 
 
 def delete(conn: sqlite3.Connection, offer_id: int) -> int:

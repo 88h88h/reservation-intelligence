@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.database import get_connection
 from app.repositories import menu_item_repo, offer_repo, restaurant_repo
-from app.schemas import CreateOfferRequest, MenuItemResponse, OfferResponse
+from app.schemas import CreateOfferRequest, EditOfferRequest, MenuItemResponse, OfferResponse
 from app.services import offer_service
 
 router = APIRouter(tags=["offers"])
@@ -65,6 +65,26 @@ def reject_offer(offer_id: int):
         raise HTTPException(status_code=404, detail="offer not found")
     if not transitioned and offer["status"] != "REJECTED":
         raise HTTPException(status_code=409, detail=f"cannot reject an offer with status {offer['status']}")
+    return OfferResponse.from_row(offer)
+
+
+@router.post("/offers/{offer_id}/cancel", response_model=OfferResponse)
+def cancel_offer(offer_id: int):
+    offer, transitioned = offer_service.cancel_offer(offer_id)
+    if offer is None:
+        raise HTTPException(status_code=404, detail="offer not found")
+    if not transitioned and offer["status"] != "CANCELLED":
+        raise HTTPException(status_code=409, detail=f"cannot cancel an offer with status {offer['status']}")
+    return OfferResponse.from_row(offer)
+
+
+@router.post("/offers/{offer_id}/edit", response_model=OfferResponse)
+def edit_offer(offer_id: int, request: EditOfferRequest):
+    offer, error = offer_service.edit_offer(offer_id, request.proposed_value)
+    if error == "not_found":
+        raise HTTPException(status_code=404, detail="offer not found")
+    if error == "not_editable":
+        raise HTTPException(status_code=409, detail=f"cannot edit an offer with status {offer['status']}")
     return OfferResponse.from_row(offer)
 
 

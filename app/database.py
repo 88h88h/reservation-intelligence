@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS offer (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     menu_item_id INTEGER NOT NULL REFERENCES menu_item(id),
     proposed_value NUMERIC NOT NULL,
-    status TEXT NOT NULL CHECK (status IN ('PENDING_CONFIRMATION', 'ACTIVE', 'REJECTED', 'EXPIRED')),
+    status TEXT NOT NULL CHECK (status IN ('PENDING_CONFIRMATION', 'ACTIVE', 'REJECTED', 'EXPIRED', 'CANCELLED')),
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 """

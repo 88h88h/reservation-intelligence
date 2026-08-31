@@ -524,8 +524,8 @@ async function loadOffers() {
         <div class="actions"></div>
       </div>
     `);
+    const actions = row.querySelector(".actions");
     if (o.status === "PENDING_CONFIRMATION") {
-      const actions = row.querySelector(".actions");
       const approveBtn = el(`<button class="primary">Approve</button>`);
       approveBtn.onclick = () => actOnOffer(o.id, "approve");
       actions.appendChild(approveBtn);
@@ -533,8 +533,64 @@ async function loadOffers() {
       rejectBtn.onclick = () => actOnOffer(o.id, "reject");
       actions.appendChild(rejectBtn);
     }
+    if (o.status === "ACTIVE") {
+      const cancelBtn = el(`<button>Cancel</button>`);
+      cancelBtn.onclick = () => actOnOffer(o.id, "cancel");
+      actions.appendChild(cancelBtn);
+    }
+    if (o.status === "PENDING_CONFIRMATION" || o.status === "ACTIVE") {
+      const editBtn = el(`<button>Edit</button>`);
+      editBtn.onclick = () => toggleOfferEditForm(row, o);
+      actions.appendChild(editBtn);
+    }
     list.appendChild(row);
   });
+}
+
+// Editing an offer's value is itself a direct human decision, same
+// authority as creating one manually, so it always lands the offer on
+// ACTIVE (see offer_service.edit_offer), whether it started out
+// PENDING_CONFIRMATION or already ACTIVE.
+function toggleOfferEditForm(row, o) {
+  const existing = row.nextElementSibling;
+  if (existing && existing.classList.contains("edit-form")) {
+    existing.remove();
+    return;
+  }
+  document.querySelectorAll(".edit-form").forEach((f) => f.remove());
+
+  const form = el(`
+    <form class="edit-form stacked">
+      <div>
+        <label>Discount ($)</label>
+        <input type="number" class="edit-offer-value" min="0" step="0.5" required />
+      </div>
+      <div class="edit-form-actions">
+        <button type="submit" class="primary">Save changes</button>
+        <button type="button" class="edit-cancel-btn">Never mind</button>
+      </div>
+      <div class="edit-outcome"></div>
+    </form>
+  `);
+  form.querySelector(".edit-offer-value").value = o.proposed_value;
+  form.querySelector(".edit-cancel-btn").onclick = () => form.remove();
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const outcome = form.querySelector(".edit-outcome");
+    setReasoning(outcome, "callout suggest", "Saving…");
+    try {
+      await api(`/offers/${o.id}/edit`, {
+        method: "POST",
+        body: JSON.stringify({ proposed_value: Number(form.querySelector(".edit-offer-value").value) }),
+      });
+      await loadOffers();
+    } catch (err) {
+      setReasoning(outcome, "callout error", err.message);
+    }
+  });
+
+  row.after(form);
 }
 
 async function actOnOffer(id, action) {

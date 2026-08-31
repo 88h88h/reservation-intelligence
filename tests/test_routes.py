@@ -458,6 +458,72 @@ def test_approve_and_reject_offer_lifecycle(client):
     assert unknown.status_code == 404
 
 
+def test_cancel_active_offer_route(client):
+    restaurant_id, _ = _seeded_ids(client)
+    menu_item_id = client.get(f"/restaurants/{restaurant_id}/menu-items").json()[0]["id"]
+    created = client.post("/offers", json={"menu_item_id": menu_item_id, "proposed_value": 10.00}).json()
+
+    response = client.post(f"/offers/{created['id']}/cancel")
+    assert response.status_code == 200
+    assert response.json()["status"] == "CANCELLED"
+
+    # Already CANCELLED: cancelling again is a harmless no-op, same
+    # idempotent-success pattern as re-confirming an already-confirmed
+    # reservation.
+    again = client.post(f"/offers/{created['id']}/cancel")
+    assert again.status_code == 200
+    assert again.json()["status"] == "CANCELLED"
+
+    unknown = client.post("/offers/999/cancel")
+    assert unknown.status_code == 404
+
+
+def test_cannot_cancel_a_pending_offer_route(client):
+    """Cancel is for something that was actually live, a still-pending
+    offer was never live, that's reject's job instead.
+    """
+    import app.database as db
+
+    restaurant_id, _ = _seeded_ids(client)
+    menu_item_id = client.get(f"/restaurants/{restaurant_id}/menu-items").json()[0]["id"]
+    conn = db.get_connection()
+    with db.transaction(conn):
+        conn.execute(
+            "INSERT INTO offer (menu_item_id, proposed_value, status) VALUES (?, ?, 'PENDING_CONFIRMATION')",
+            (menu_item_id, 5.00),
+        )
+    offer_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.close()
+
+    response = client.post(f"/offers/{offer_id}/cancel")
+    assert response.status_code == 409
+
+
+def test_edit_offer_route_changes_value_and_activates(client):
+    restaurant_id, _ = _seeded_ids(client)
+    menu_item_id = client.get(f"/restaurants/{restaurant_id}/menu-items").json()[0]["id"]
+    created = client.post("/offers", json={"menu_item_id": menu_item_id, "proposed_value": 10.00}).json()
+
+    response = client.post(f"/offers/{created['id']}/edit", json={"proposed_value": 6.50})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["proposed_value"] == 6.50
+    assert body["status"] == "ACTIVE"
+
+    unknown = client.post("/offers/999/edit", json={"proposed_value": 1.00})
+    assert unknown.status_code == 404
+
+
+def test_edit_cancelled_offer_route_returns_409(client):
+    restaurant_id, _ = _seeded_ids(client)
+    menu_item_id = client.get(f"/restaurants/{restaurant_id}/menu-items").json()[0]["id"]
+    created = client.post("/offers", json={"menu_item_id": menu_item_id, "proposed_value": 10.00}).json()
+    client.post(f"/offers/{created['id']}/cancel")
+
+    response = client.post(f"/offers/{created['id']}/edit", json={"proposed_value": 3.00})
+    assert response.status_code == 409
+
+
 def test_delete_offer_route(client):
     restaurant_id, _ = _seeded_ids(client)
     menu_item_id = client.get(f"/restaurants/{restaurant_id}/menu-items").json()[0]["id"]

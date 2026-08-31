@@ -165,10 +165,15 @@ pytest
   a situation in plain language, it decides which skill (if any) applies.
 - `GET /restaurants/{id}/menu-items`, `GET /restaurants/{id}/offers`,
   `POST /offers` (staff-created, always live immediately),
-  `POST /offers/{id}/approve`, `POST /offers/{id}/reject`: offer management.
-  `DELETE /offers/{id}` also exists, demo-mode cleanup only, real offers
-  stay auditable via status transitions, this is never used by normal
-  offer management.
+  `POST /offers/{id}/approve`, `POST /offers/{id}/reject`,
+  `POST /offers/{id}/cancel` (ends a currently-`ACTIVE` offer early, a
+  genuinely distinct end state from `REJECTED`, which means "never went
+  live" instead), `POST /offers/{id}/edit` (changes the discount amount;
+  a human setting the value directly needs no separate confirmation, so
+  it always lands on `ACTIVE`, closing out a pending approval if there
+  was one): offer management. `DELETE /offers/{id}` also exists,
+  demo-mode cleanup only, real offers stay auditable via status
+  transitions, this is never used by normal offer management.
 
 ### Concurrency model, in short
 

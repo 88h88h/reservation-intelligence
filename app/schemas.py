@@ -126,6 +126,10 @@ class CreateOfferRequest(BaseModel):
     proposed_value: float
 
 
+class EditOfferRequest(BaseModel):
+    proposed_value: float
+
+
 class BookingRequestContext(BaseModel):
     """The shape of an in-progress booking request, shared by skills
     that reason about a specific (restaurant, table, date/time, party)
