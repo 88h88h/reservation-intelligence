@@ -208,3 +208,26 @@ def test_create_reservation_reclaims_expired_hold(test_db):
 
     assert stale_status == "EXPIRED"
     assert stale_claims == 0
+
+
+def test_create_reservation_rejects_party_larger_than_the_table(test_db):
+    """Table 1 seats two, so a party of eight must be turned away
+    before the reservation row or any of its slot claims exist.
+    """
+    db.seed_if_empty()
+    conn = db.get_connection()
+    restaurant_id, table_id, user_id = _seeded_ids(conn)
+    conn.close()
+
+    with pytest.raises(reservation_service.BookingRejected):
+        reservation_service.create_reservation(
+            restaurant_id=restaurant_id,
+            table_id=table_id,
+            user_id=user_id,
+            person_count=8,
+            date=DATE,
+            hour=19,
+            minute=0,
+            duration_minutes=60,
+            idempotency_key="oversized-party",
+        )
