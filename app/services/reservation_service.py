@@ -7,11 +7,48 @@ import sqlite3
 from datetime import datetime, timedelta, timezone
 
 from app.database import get_connection, transaction
-from app.repositories import reservation_repo
+from app.repositories import reservation_repo, restaurant_repo, table_repo
 from app.services import pricing_service
 from app.slots import compute_slot_indices
 
 HOLD_DURATION_MINUTES = 10
+
+
+class BookingRejected(ValueError):
+    """A booking the floor plan or the opening hours don't allow.
+
+    A ValueError so it reaches the 400 handler already in app/main.py,
+    the same one the slot-grid errors use.
+    """
+
+
+def _validate_booking(*, restaurant_id: int, table_id: int, person_count: int, hour: int) -> None:
+    """Check a booking against the table it names and the restaurant's
+    opening hours, before any slots get claimed.
+
+    table_repo.find_available applies capacity and is_bookable when it
+    lists tables, but nothing applied them once a table_id arrived on a
+    POST, so browsing was the only thing enforcing the floor plan and
+    every caller was free to skip it.
+    """
+    conn = get_connection()
+    try:
+        table = table_repo.get_by_id(conn, table_id)
+        if table is None or table["restaurant_id"] != restaurant_id:
+            raise BookingRejected(f"table {table_id} does not belong to restaurant {restaurant_id}")
+        if not table["is_bookable"]:
+            raise BookingRejected(f"table {table_id} is not currently bookable")
+        if person_count > table["capacity"]:
+            raise BookingRejected(f"table {table_id} seats {table['capacity']}, requested {person_count}")
+
+        restaurant = restaurant_repo.get_by_id(conn, restaurant_id)
+        if not (restaurant["opening_hour"] <= hour < restaurant["closing_hour"]):
+            raise BookingRejected(
+                f"{hour:02d}:00 is outside service hours "
+                f"({restaurant['opening_hour']:02d}:00 to {restaurant['closing_hour']:02d}:00)"
+            )
+    finally:
+        conn.close()
 
 
 def _release(conn, reservation_id: int, new_status: str) -> None:
@@ -105,6 +142,10 @@ def create_reservation(
         existing = reservation_repo.get_by_idempotency_key(conn, idempotency_key)
         if existing is not None:
             return existing
+
+        _validate_booking(
+            restaurant_id=restaurant_id, table_id=table_id, person_count=person_count, hour=hour
+        )
 
         slot_indices = compute_slot_indices(hour, minute, duration_minutes)
 
